@@ -1,7 +1,7 @@
 Package: com.roothide.libroothide
 Name: roothide
-Version: 0.0.1
-Architecture: iphoneos-arm64e
+Version: @DEB_ROOTHIDE_V@
+Architecture: @DEB_ARCH@
 Description: roothide core library
 Maintainer: roothide
 Author: roothide
