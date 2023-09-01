@@ -1,4 +1,4 @@
-Package: com.roothide.libroothide
+Package: com.roothide.core
 Name: roothide
 Version: @DEB_ROOTHIDE_V@
 Architecture: @DEB_ARCH@

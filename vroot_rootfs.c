@@ -10,7 +10,7 @@
 #include <sys/syslimits.h>
 
 #include "common.h"
-#include "libroothide.h"
+#include "roothide.h"
 
 #define ROOTFS_DIR_NAME "rootfs"
 

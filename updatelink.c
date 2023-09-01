@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
-#include "libroothide.h"
+#include "roothide.h"
 
 #define JBROOT_SYMLINK_NAME ".jbroot"
 

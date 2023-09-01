@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#include "libroothide.h"
+#include "roothide.h"
 
 #define VROOT_API_NAME(NAME) vroot_##NAME
 #define VROOTAT_API_NAME(NAME) vroot_##NAME

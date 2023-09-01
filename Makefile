@@ -40,7 +40,7 @@ rootfs: cmdtool.c libroothide.dylib
 
 all: $(ALL)
 	mkdir devkit
-	cp ./libroothide.h ./devkit/
+	cp ./roothide.h ./devkit/
 	cp ./symredirect ./devkit/
 	cp ./libroothide.tbd ./devkit/
 	zip -r devkit.zip ./devkit
