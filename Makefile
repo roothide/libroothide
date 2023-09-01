@@ -1,13 +1,10 @@
-CC      ?= xcrun -sdk macosx clang
+CC      ?= xcrun -sdk iphoneos clang
 CPP		?= clang -E
-CFLAGS  ?= -mmacosx-version-min=10.7
+CFLAGS  ?= -miphoneos-version-min=15.0 -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path)
 
 ALL := libroothide.dylib libvroot.h libvroot.dylib libvrootapi.dylib updatelink symredirect jbrand jbroot rootfs
 
-ifneq (,$(findstring iphoneos,$(CC) $(CFLAGS)))
 CFLAGS += -arch arm64 -arch arm64e
-endif
-
 LDFLAGS += -L./
 
 libroothide.dylib: jbroot.c jbroot.cpp jbroot.m cache.c common.c
@@ -23,12 +20,13 @@ libvroot.dylib: libroothide.dylib vroot.c vroot_mktemp.c vroot.cpp vroot_rootfs.
 
 libvrootapi.dylib: libvroot.dylib vrootapi.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -lvroot -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvrootapi.dylib -o $@ $^
+	xcrun tapi stubify $@
 
 updatelink: updatelink.c libroothide.dylib
 	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^
 
 symredirect: symredirect.cpp
-	$(CC) $(CFLAGS) -std=c++11 $(LDFLAGS) -lstdc++ -o $@ $^
+	xcrun -sdk macosx clang -mmacosx-version-min=10.7 -std=c++11 -lstdc++ -o $@ $^
 
 jbrand: cmdtool.c libroothide.dylib
 	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^
@@ -43,9 +41,8 @@ rootfs: cmdtool.c libroothide.dylib
 all: $(ALL)
 	mkdir devkit
 	cp ./libroothide.h ./devkit/
-	cp ./libvroot.h	./devkit/
 	cp ./symredirect ./devkit/
-	cp ./*.tbd ./devkit/
+	cp ./libroothide.tbd ./devkit/
 	zip -r devkit.zip ./devkit
 
 clean:
