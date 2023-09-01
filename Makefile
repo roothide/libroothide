@@ -1,52 +1,56 @@
+CC      ?= xcrun -sdk macosx clang
+CPP		?= clang -E
+CFLAGS  ?= -mmacosx-version-min=10.7
 
-ARCHS = arm64 arm64e
-TARGET := iphone:clang:latest:15.0
-#THEOS_PACKAGE_SCHEME=rootless
+ALL := libroothide.dylib libvroot.h libvroot.dylib libvrootapi.dylib updatelink symredirect jbrand jbroot rootfs
 
-THEOS_PLATFORM_DEB_COMPRESSION_TYPE = gzip
+ifneq (,$(findstring iphoneos,$(CC) $(CFLAGS)))
+CFLAGS += -arch arm64 -arch arm64e
+endif
 
-include $(THEOS)/makefiles/common.mk
+LDFLAGS += -L./
 
-LIBRARY_NAME = libroothide libvroot libvrootapi
+libroothide.dylib: jbroot.c jbroot.cpp jbroot.m cache.c common.c
+	$(CC) -fobjc-arc $(CFLAGS) $(LDFLAGS) -lstdc++ -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libroothide.dylib -o $@ $^
+	xcrun tapi stubify $@
 
-libroothide_FILES = jbroot.c jbroot.cpp jbroot.m cache.c common.c
-libroothide_LDFLAGS += -install_name @loader_path/.jbroot/usr/lib/libroothide.dylib
-libroothide_INSTALL_PATH = /usr/lib
+libvroot.h: vroot.h
+	$(CPP) $< > $@
 
-libvroot_FILES = vroot.c vroot_mktemp.c vroot.cpp vroot_rootfs.c common.c
-libvroot_CFLAGS += -I./
-libvroot_LDFLAGS += -install_name @loader_path/.jbroot/usr/lib/libvroot.dylib -L$(THEOS_OBJ_DIR) -lroothide
-libvroot_INSTALL_PATH = /usr/lib
+libvroot.dylib: libroothide.dylib vroot.c vroot_mktemp.c vroot.cpp vroot_rootfs.c common.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -lstdc++ -lroothide -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvroot.dylib -o $@ $^
+	xcrun tapi stubify $@
 
-libvrootapi_FILES = vrootapi.c
-libvrootapi_LDFLAGS += -install_name @loader_path/.jbroot/usr/lib/libvrootapi.dylib -L$(THEOS_OBJ_DIR) -lvroot
-libvrootapi_INSTALL_PATH = /usr/lib
-libvrootapi_USE_MODULES = no
-include $(THEOS_MAKE_PATH)/library.mk
+libvrootapi.dylib: libvroot.dylib vrootapi.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -lvroot -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvrootapi.dylib -o $@ $^
 
+updatelink: updatelink.c libroothide.dylib
+	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^
 
-TOOL_NAME = updatelink symredirect
+symredirect: symredirect.cpp
+	$(CC) $(CFLAGS) -std=c++11 $(LDFLAGS) -lstdc++ -o $@ $^
 
-updatelink_FILES = updatelink.c
-updatelink_CFLAGS += -I./
-updatelink_LDFLAGS += -L$(THEOS_OBJ_DIR) -lroothide
-updatelink_INSTALL_PATH = /usr/libexec
-updatelink_CODESIGN_FLAGS = -Sentitlements.plist
+jbrand: cmdtool.c libroothide.dylib
+	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^
 
-symredirect_FILES = symredirect.cpp
-symredirect_CFLAGS += -I./ -std=c++11
-symredirect_INSTALL_PATH = /usr/bin
-symredirect_CODESIGN_FLAGS = -Sentitlements.plist
+jbroot: cmdtool.c libroothide.dylib
+	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^
 
-
-include $(THEOS_MAKE_PATH)/tool.mk
+rootfs: cmdtool.c libroothide.dylib
+	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^
 
 
-after-libvroot-all::
-	$(CPP) vroot.h > libvroot.h
+all: $(ALL)
+	mkdir devkit
+	cp ./libroothide.h ./devkit/
+	cp ./libvroot.h	./devkit/
+	cp ./symredirect ./devkit/
+	cp ./*.tbd ./devkit/
+	zip -r devkit.zip ./devkit
 
-clean::
-	rm -rf ./packages/*
+clean:
+	rm -rf $(ALL) *.tbd
+	rm -rf ./devkit.zip
+	rm -rf ./devkit
 
-after-install::
-	install.exec 'installed'
+.PHONY: all clean

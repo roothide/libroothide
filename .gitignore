@@ -1,4 +1,14 @@
 .vscode
 .theos
 packages
+devkit
+*.zip
+*.tbd
+*.dylib
 libvroot.h
+jbrand
+jbroot
+rootfs
+symredirect
+updatelink
+Makefile.theos
