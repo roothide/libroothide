@@ -34,7 +34,7 @@ std::vector<std::string> g_shim_apis = {
 #include "vroot.h"
 };
 
-const char* g_shim_install_name = "@loader_path/.jbroot/usr/lib/libroothide.dylib";
+const char* g_shim_install_name = "@loader_path/.jbroot/usr/lib/libvrootapi.dylib";
 
 char* getLibraryByOrdinal(struct mach_header_64* header, int ordinal)
 {

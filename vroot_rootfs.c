@@ -12,17 +12,17 @@
 #include "common.h"
 #include "roothide.h"
 
-#define ROOTFS_DIR_NAME "rootfs"
-
 #define VROOT_API_NAME(NAME) vroot_##NAME
 #define VROOTAT_API_NAME(NAME) vroot_##NAME
 
 struct dirent* VROOT_API_NAME(readdir)(DIR* dir)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     struct dirent* ret = readdir(dir);
     if(ret) {
         
-        if(ret->d_type==DT_LNK && strcmp(ret->d_name, ROOTFS_DIR_NAME)==0)
+        if(ret->d_type==DT_LNK && strcmp(ret->d_name, ROOTFS_NAME)==0)
         {
         
             int fd = dirfd(dir);
@@ -66,10 +66,12 @@ struct dirent* VROOT_API_NAME(readdir)(DIR* dir)
 
 int VROOT_API_NAME(readdir_r)(DIR* dir, struct dirent* d, struct dirent ** dp)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int ret = readdir_r(dir,d,dp);
     if(ret == 0) {
         
-        if((*dp)->d_type==DT_LNK && strcmp((*dp)->d_name, ROOTFS_DIR_NAME)==0)
+        if((*dp)->d_type==DT_LNK && strcmp((*dp)->d_name, ROOTFS_NAME)==0)
         {
             int fd = dirfd(dir);
             struct stat st;
@@ -111,13 +113,17 @@ int VROOT_API_NAME(readdir_r)(DIR* dir, struct dirent* d, struct dirent ** dp)
 
 int VROOT_API_NAME(lstat)(const char * path, struct stat *sb)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     const char* newpath = jbroot_alloc(path);
     int ret = lstat(newpath, sb);
     free((void*)newpath);
     if(ret==0) {
         if(S_ISLNK(sb->st_mode)) {
-            struct stat st;
-            lstat(jbroot("/"ROOTFS_DIR_NAME), &st);
+            struct stat st={0};
+            char buf[PATH_MAX];
+            snprintf(buf,sizeof(buf),"%s"ROOTFS_NAME, jbroot("/"));
+            lstat(buf, &st);
             if(st.st_dev==sb->st_dev
                && st.st_ino==sb->st_ino)
             {
@@ -150,13 +156,17 @@ int VROOT_API_NAME(lstat)(const char * path, struct stat *sb)
 
 int VROOT_API_NAME(lstatx_np)(const char *path, struct stat *sb, filesec_t fsec)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     const char* newpath = jbroot_alloc(path);
     int ret = lstatx_np(newpath, sb, fsec);
     free((void*)newpath);
     if(ret==0) {
         if(S_ISLNK(sb->st_mode)) {
-            struct stat st;
-            lstat(jbroot("/"ROOTFS_DIR_NAME), &st);
+            struct stat st={0};
+            char buf[PATH_MAX];
+            snprintf(buf,sizeof(buf),"%s"ROOTFS_NAME, jbroot("/"));
+            lstat(buf, &st);
             if(st.st_dev==sb->st_dev
                && st.st_ino==sb->st_ino)
             {
@@ -190,14 +200,18 @@ int VROOT_API_NAME(lstatx_np)(const char *path, struct stat *sb, filesec_t fsec)
 
 int VROOT_API_NAME(fstatat)(int fd, const char *path, struct stat *sb, int flag)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     const char* newpath = jbrootat_alloc(fd, path);
     int ret = fstatat(fd, newpath, sb, flag);
     if(ret ==0 )
     {
         //if(flag & AT_SYMLINK_NOFOLLOW)
         if(S_ISLNK(sb->st_mode)) {
-            struct stat st;
-            lstat(jbroot("/"ROOTFS_DIR_NAME), &st);
+            struct stat st={0};
+            char buf[PATH_MAX];
+            snprintf(buf,sizeof(buf),"%s"ROOTFS_NAME, jbroot("/"));
+            lstat(buf, &st);
             if(st.st_dev==sb->st_dev
                && st.st_ino==sb->st_ino)
             {
@@ -230,14 +244,18 @@ int VROOT_API_NAME(fstatat)(int fd, const char *path, struct stat *sb, int flag)
 
 ssize_t VROOTAT_API_NAME(readlinkat)(int fd,const char* path,char* buf,size_t bufsize)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     const char* newpath = jbrootat_alloc(fd, path);
     
     struct stat sb;
     if(path[strlen(path)] != '/' && //EINVAL
        fstatat(fd, newpath, &sb, AT_SYMLINK_NOFOLLOW)==0) {
         if(S_ISLNK(sb.st_mode)) {
-            struct stat st;
-            lstat(jbroot("/rootfs"), &st);
+            struct stat st={0};
+            char buf[PATH_MAX];
+            snprintf(buf,sizeof(buf),"%s"ROOTFS_NAME, jbroot("/"));
+            lstat(buf, &st);
             if(st.st_dev==sb.st_dev
                && st.st_ino==sb.st_ino)
             {
@@ -289,5 +307,7 @@ ssize_t VROOTAT_API_NAME(readlinkat)(int fd,const char* path,char* buf,size_t bu
 
 ssize_t VROOT_API_NAME(readlink)(const char * path, char* buf, size_t bufsiz)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     return VROOT_API_NAME(readlinkat)(AT_FDCWD, path, buf, bufsiz);
 }

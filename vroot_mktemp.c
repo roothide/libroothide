@@ -28,6 +28,7 @@
  */
 
 #include "roothide.h"
+#include "common.h"
 
 #define VROOT_API_NAME(NAME) vroot_##NAME
 #define VROOTAT_API_NAME(NAME) vroot_##NAME
@@ -90,6 +91,8 @@ static const char padchar[] =
 int
 VROOT_API_NAME(mkostemps)(char *path, int slen, int oflags)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int fd;
     if (oflags & ~ALLOWED_MKOSTEMP_FLAGS) {
         errno = EINVAL;
@@ -101,6 +104,8 @@ VROOT_API_NAME(mkostemps)(char *path, int slen, int oflags)
 int
 VROOT_API_NAME(mkostempsat_np)(int dfd, char *path, int slen, int oflags)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int fd;
     if (oflags & ~ALLOWED_MKOSTEMP_FLAGS) {
         errno = EINVAL;
@@ -112,6 +117,8 @@ VROOT_API_NAME(mkostempsat_np)(int dfd, char *path, int slen, int oflags)
 int
 VROOT_API_NAME(mkstemps)(char *path, int slen)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int fd;
 
     return (find_temp_path(AT_FDCWD, path, slen, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
@@ -120,6 +127,8 @@ VROOT_API_NAME(mkstemps)(char *path, int slen)
 int
 VROOT_API_NAME(mkstempsat_np)(int dfd, char *path, int slen)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int fd;
 
     return (find_temp_path(dfd, path, slen, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
@@ -128,6 +137,8 @@ VROOT_API_NAME(mkstempsat_np)(int dfd, char *path, int slen)
 int
 VROOT_API_NAME(mkostemp)(char *path, int oflags)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int fd;
     if (oflags & ~ALLOWED_MKOSTEMP_FLAGS) {
         errno = EINVAL;
@@ -139,6 +150,8 @@ VROOT_API_NAME(mkostemp)(char *path, int oflags)
 int
 VROOT_API_NAME(mkstemp)(char *path)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int fd;
 
     return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
@@ -147,6 +160,8 @@ VROOT_API_NAME(mkstemp)(char *path)
 char *
 VROOT_API_NAME(mkdtemp)(char *path)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkdtemp_action, NULL, NULL) ?
             path : (char *)NULL);
 }
@@ -154,6 +169,8 @@ VROOT_API_NAME(mkdtemp)(char *path)
 char *
 VROOT_API_NAME(mkdtempat_np)(int dfd, char *path)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     return (find_temp_path(dfd, path, 0, TRUE, _mkdtemp_action, NULL, NULL) ?
             path : (char *)NULL);
 }
@@ -161,6 +178,8 @@ VROOT_API_NAME(mkdtempat_np)(int dfd, char *path)
 char *
 _mktemp(char *path)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     return (find_temp_path(AT_FDCWD, path, 0, FALSE, _mktemp_action, NULL, NULL) ?
             path : (char *)NULL);
 }
@@ -168,12 +187,16 @@ _mktemp(char *path)
 char *
 VROOT_API_NAME(mktemp)(char *path)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     return (_mktemp(path));
 }
 
 int
 VROOT_API_NAME(mkstemp_dprotected_np)(char *path, int class, int dpflags)
 {
+VROOT_LOG("@%s\n",__FUNCTION__);
+
     int fd;
     int ctx[2] = { class, dpflags };
 

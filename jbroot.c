@@ -22,15 +22,7 @@ unsigned long long jbrand() {
 }
 
 static void __attribute__((__constructor__)) _jbroot_init()
-{
-    if(access("/var/.jbroottest", F_OK)==0||getenv("JBROOTTEST"))
-    {
-        setenv("JBRAND", "1234567890ABCDEF", 1);
-        //setenv("JBROOT", "/private/var/.jbroot-1234567890ABCDEF", 1);
-        // use /var/ instead of /private/var/ because stringByResolvingSymlinksInPath won't resolve /var/
-        setenv("JBROOT", "/var/.jbroot-1234567890ABCDEF", 1);
-    }
-    
+{    
     JBRAND = getenv("JBRAND");
     JBROOT = getenv("JBROOT");
     
@@ -77,11 +69,14 @@ static void __attribute__((__constructor__)) _jbroot_init()
 //free after use
 static const char* __private_jbrootat_alloc(int fd, const char* path)
 {
+    int olderr = errno;
+    
     char atdir[PATH_MAX]={0};
     fd==AT_FDCWD ? (long)getcwd(atdir,sizeof(atdir)) : fcntl(fd, F_GETPATH, atdir, sizeof(atdir));
-    LOG(" **jbrootat_alloc (%d)%s %s\n", fd, atdir, path);
+    JBPATH_LOG(" **jbrootat_alloc (%d)%s %s\n", fd, atdir, path);
     
     if(!path || !*path) {
+        errno = olderr;
         return NULL;
     }
 
@@ -195,8 +190,9 @@ static const char* __private_jbrootat_alloc(int fd, const char* path)
         resolved[resolved_len - 1] = '\0';
     
     
-    LOG("*resolved:%ld %s\n", resolved_len, resolved);
+    JBPATH_LOG("*resolved:%ld %s\n", resolved_len, resolved);
 
+    errno = olderr;
     return strdup(resolved);
 }
 
@@ -214,21 +210,20 @@ const char* jbrootat_alloc(int fd, const char* path)
     if(fixedpath[0] != '/') return fixedpath;
     
     //its necessary for symlink /rootfs/xxx -> /rootfs/yyy
-    if(strlen(fixedpath)>=(sizeof("/rootfs")-1)
-       && strncmp(fixedpath, "/rootfs", sizeof("/rootfs")-1)==0)
+    if(strlen(fixedpath)>=(sizeof("/"ROOTFS_NAME)-1)
+       && strncmp(fixedpath, "/"ROOTFS_NAME, sizeof("/"ROOTFS_NAME)-1)==0)
     {
+    //    char atdir[PATH_MAX]={0};
+    //    fd==AT_FDCWD ? (long)getcwd(atdir,sizeof(atdir)) : fcntl(fd, F_GETPATH, atdir, sizeof(atdir));
+    //    printf(" **rootfs--> (%d)%s\n\t%s : %s\n", fd, atdir, path, fixedpath);
         
-//        char atdir[PATH_MAX]={0};
-//        fd==AT_FDCWD ? (long)getcwd(atdir,sizeof(atdir)) : fcntl(fd, F_GETPATH, atdir, sizeof(atdir));
-//        printf(" **rootfs--> (%d)%s\n\t%s\n\t%s\n", fd, atdir, path, fixedpath);
-        
-        if(fixedpath[sizeof("/rootfs")-1]=='/') {
-            char* newpath = strdup(&fixedpath[sizeof("/rootfs")-1]);
+        if(fixedpath[sizeof("/"ROOTFS_NAME)-1]=='/') {
+            char* newpath = strdup(&fixedpath[sizeof("/"ROOTFS_NAME)-1]);
             free((void*)fixedpath);
             return newpath;
         }
-        //break find / ???
-        if(fixedpath[sizeof("/rootfs")-1]=='\0') {
+        //break find / and cd rootfs;realpath . ??? caused by lstat(jbroot("/rootfs")) in vroot module
+        if(fixedpath[sizeof("/"ROOTFS_NAME)-1]=='\0') {
             free((void*)fixedpath);
             return strdup("/");
         }
@@ -254,9 +249,12 @@ const char* jbroot_alloc(const char* path)
 //free after use
 static const char* __private_rootfs_alloc(const char* path)
 {
-    LOG(" **rootfs_alloc %s\n", path);
+    int olderr = errno;
+
+    JBPATH_LOG(" **rootfs_alloc %s\n", path);
     
     if(!path || !*path) {
+        errno = olderr;
         return NULL;
     }
 
@@ -352,15 +350,16 @@ static const char* __private_rootfs_alloc(const char* path)
     char* retval = NULL;
     if(jbroot_based==0 && path[0] == '/') { //revert a path out of jbroot?
         assert(resolved[0] == '/');
-        retval = malloc(sizeof(ROOTFS_PREFIX)-1 + strlen(resolved) + 1);
-        strcpy(retval, ROOTFS_PREFIX);//just add ROOTFS_PREFIX prefix
+        retval = malloc(sizeof("/"ROOTFS_NAME)-1 + strlen(resolved) + 1);
+        strcpy(retval, "/"ROOTFS_NAME);//just add rootfs prefix
         strcat(retval, resolved);
     } else {
         retval = strdup(resolved);
     }
     
-    LOG("*resolved:%ld %s\n", resolved_len, retval);
+    JBPATH_LOG("*resolved:%ld %s\n", resolved_len, retval);
 
+    errno = olderr;
     return retval;
 }
 
