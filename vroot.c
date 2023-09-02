@@ -702,21 +702,36 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
+#include <mach-o/dyld.h>
+void* VROOT_API_NAME(dlopen)(const char * __path, int __mode)
+{
+VROOT_LOG("@%s\n",__FUNCTION__);
+
+    if(_dyld_shared_cache_contains_path(__path)) {
+        return dlopen(__path, __mode);
+    }
+
+    const char* newpath = jbroot_alloc(__path);
+    void* ret = dlopen(newpath, __mode);
+    if(newpath) free((void*)newpath);
+    return ret;
+}
 int VROOT_API_NAME(dladdr)(const void * addr, Dl_info * info)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
 
     int ret = dladdr(addr, info);
-    if(ret != 0)
+    if(ret != 0 && !_dyld_shared_cache_contains_path(info->dli_fname))
     {
         //need use cache
-        const char* newfname = rootfs_alloc(info->dli_fname);
+        const char* newfname = rootfs(info->dli_fname);
         if(strcmp(info->dli_fname, newfname) != 0)
         {
             info->dli_fname = newfname;
         }
-        //fakechroot do this, do we need?
-//        const char* newsname = jbroot_revert(info->dli_sname);
+
+        //sname??? fakechroot do this, do we need?
+//        const char* newsname = jbroot(info->dli_sname);
 //        if(strcmp(info->dli_sname, newsname) != 0)
 //        {
 //            info->dli_sname = newsname;

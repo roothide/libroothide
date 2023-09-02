@@ -28,7 +28,7 @@ MACRO_define VROOT_H
 
 //what about tweaks? VROOT_API_DEF(void*, dlsym, (void * __handle, const char * __symbol))
 
-VROOT_API_WRAP(void*, dlopen, (const char * __path, int __mode), (newpath,__mode), __path)
+VROOT_API_DEF(void*, dlopen, (const char * __path, int __mode))
 
 VROOT_API_DEF(int, dladdr, (const void * addr, Dl_info * info) )
 
