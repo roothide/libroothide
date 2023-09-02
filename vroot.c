@@ -504,6 +504,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
+/* xun-source/libsyscall/wrappers/cancelable/fcntl-base.c */
 #define F_OPENFROM      56              /* SPI: open a file relative to fd (must be a dir) */
 #define F_UNLINKFROM    57              /* SPI: open a file relative to fd (must be a dir) */
 #define F_CHECK_OPENEVT 58              /* SPI: if a process is marked OPENEVT, or in O_EVTONLY on opens of this vnode */

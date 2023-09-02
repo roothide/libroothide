@@ -117,7 +117,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
     const char* newpath = jbroot_alloc(path);
     int ret = lstat(newpath, sb);
-    free((void*)newpath);
+
     if(ret==0) {
         if(S_ISLNK(sb->st_mode)) {
             struct stat st={0};
@@ -135,6 +135,12 @@ VROOT_LOG("@%s\n",__FUNCTION__);
                 sb->st_mode &= ~S_IFLNK;
                 sb->st_mode |= S_IFDIR;
             }
+
+            char lbuf[PATH_MAX]={0};
+            int lsize = readlink(newpath, lbuf, sizeof(lbuf));
+            const char* newlink = rootfs_alloc(lbuf);
+            sb->st_size = strlen(newlink);
+            free((void*)newlink);
         }
         
         if(S_ISDIR(sb->st_mode)) {
@@ -151,6 +157,9 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             }
         }
     }
+
+    free((void*)newpath);
+
     return ret;
 }
 
@@ -160,7 +169,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
     const char* newpath = jbroot_alloc(path);
     int ret = lstatx_np(newpath, sb, fsec);
-    free((void*)newpath);
+
     if(ret==0) {
         if(S_ISLNK(sb->st_mode)) {
             struct stat st={0};
@@ -178,6 +187,12 @@ VROOT_LOG("@%s\n",__FUNCTION__);
                 sb->st_mode &= ~S_IFLNK;
                 sb->st_mode |= S_IFDIR;
             }
+
+            char lbuf[PATH_MAX]={0};
+            int lsize = readlink(newpath, lbuf, sizeof(lbuf));
+            const char* newlink = rootfs_alloc(lbuf);
+            sb->st_size = strlen(newlink);
+            free((void*)newlink);
         }
         
         if(S_ISDIR(sb->st_mode)) {
@@ -194,6 +209,9 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             }
         }
     }
+
+    free((void*)newpath);
+
     return ret;
 }
 
@@ -203,7 +221,9 @@ int VROOT_API_NAME(fstatat)(int fd, const char *path, struct stat *sb, int flag)
 VROOT_LOG("@%s\n",__FUNCTION__);
 
     const char* newpath = jbrootat_alloc(fd, path);
+
     int ret = fstatat(fd, newpath, sb, flag);
+    
     if(ret ==0 )
     {
         //if(flag & AT_SYMLINK_NOFOLLOW)
@@ -223,6 +243,12 @@ VROOT_LOG("@%s\n",__FUNCTION__);
                 sb->st_mode &= ~S_IFLNK;
                 sb->st_mode |= S_IFDIR;
             }
+
+            char lbuf[PATH_MAX]={0};
+            int lsize = readlinkat(fd, newpath, lbuf, sizeof(lbuf));
+            const char* newlink = rootfs_alloc(lbuf);
+            sb->st_size = strlen(newlink);
+            free((void*)newlink);
         }
         
         if(S_ISDIR(sb->st_mode)) {
@@ -239,6 +265,9 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             }
         }
     }
+
+    free((void*)newpath);
+
     return ret;
 }
 
