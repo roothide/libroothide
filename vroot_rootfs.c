@@ -137,7 +137,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             }
 
             char lbuf[PATH_MAX]={0};
-            int lsize = readlink(newpath, lbuf, sizeof(lbuf));
+            int lsize = readlink(newpath, lbuf, sizeof(lbuf)-1);
             const char* newlink = rootfs_alloc(lbuf);
             sb->st_size = strlen(newlink);
             free((void*)newlink);
@@ -189,7 +189,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             }
 
             char lbuf[PATH_MAX]={0};
-            int lsize = readlink(newpath, lbuf, sizeof(lbuf));
+            int lsize = readlink(newpath, lbuf, sizeof(lbuf)-1);
             const char* newlink = rootfs_alloc(lbuf);
             sb->st_size = strlen(newlink);
             free((void*)newlink);
@@ -223,7 +223,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     const char* newpath = jbrootat_alloc(fd, path);
 
     int ret = fstatat(fd, newpath, sb, flag);
-    
+
     if(ret ==0 )
     {
         //if(flag & AT_SYMLINK_NOFOLLOW)
@@ -245,7 +245,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             }
 
             char lbuf[PATH_MAX]={0};
-            int lsize = readlinkat(fd, newpath, lbuf, sizeof(lbuf));
+            int lsize = readlinkat(fd, newpath, lbuf, sizeof(lbuf)-1);
             const char* newlink = rootfs_alloc(lbuf);
             sb->st_size = strlen(newlink);
             free((void*)newlink);

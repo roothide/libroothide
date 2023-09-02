@@ -963,11 +963,19 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
     const char* newpath = jbroot_alloc(path);
     
+    int olderr = errno;
+
     //dpkg remove packages
     char* jbrootsymlink=NULL;
     asprintf(&jbrootsymlink, "%s/.jbroot", newpath);
-    unlink(jbrootsymlink);
+    char lbuf[PATH_MAX]={0};
+    if(readlink(jbrootsymlink, lbuf, sizeof(lbuf)-1) && lbuf[0]=='/')
+    { //not a bootstrap symlink
+        unlink(jbrootsymlink);
+    }
     free(jbrootsymlink);
+
+    errno = olderr;
     
     int ret = rmdir(newpath);
     free((void*)newpath);
