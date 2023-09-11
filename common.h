@@ -10,6 +10,9 @@
 
 int is_jbroot_name(const char* name);
 
+extern const char* __roothideinit_JBRAND;
+extern const char* __roothideinit_JBROOT;
+
 #define EXPORT __attribute__ ((visibility ("default")))
 
 #define JBPATH_LOG(...) {if(getenv("JBPATHLOG")&&atoi(getenv("JBPATHLOG"))) {printf(__VA_ARGS__);fflush(stdout);}}

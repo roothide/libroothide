@@ -6,15 +6,17 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <libgen.h>
+#include <assert.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
 
 #include "common.h"
-#include "roothide.h"
+#include "libroothide.h"
 
 #define VROOT_API_NAME(NAME) vroot_##NAME
 #define VROOTAT_API_NAME(NAME) vroot_##NAME
 
+EXPORT
 struct dirent* VROOT_API_NAME(readdir)(DIR* dir)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
@@ -64,6 +66,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
+EXPORT
 int VROOT_API_NAME(readdir_r)(DIR* dir, struct dirent* d, struct dirent ** dp)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
@@ -111,6 +114,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
+EXPORT
 int VROOT_API_NAME(lstat)(const char * path, struct stat *sb)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
@@ -163,6 +167,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
+EXPORT
 int VROOT_API_NAME(lstatx_np)(const char *path, struct stat *sb, filesec_t fsec)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
@@ -215,7 +220,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
-
+EXPORT
 int VROOT_API_NAME(fstatat)(int fd, const char *path, struct stat *sb, int flag)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
@@ -271,6 +276,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
+EXPORT
 ssize_t VROOTAT_API_NAME(readlinkat)(int fd,const char* path,char* buf,size_t bufsize)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
@@ -316,15 +322,12 @@ VROOT_LOG("@%s\n",__FUNCTION__);
         }
     }
                 
-    ssize_t ret = readlinkat(fd, newpath, buf, bufsize);
+    char mybuf[PATH_MAX]={0}; //the caller buf may too small for real fs link
+    ssize_t ret = readlinkat(fd, newpath, mybuf, sizeof(mybuf)-1);
     if(newpath) free((void*)newpath);
     if(ret > 0) {
-        char* linkbuf = malloc(bufsize+1);
-        memcpy(linkbuf, buf, bufsize);
-        linkbuf[ret] = '\0';
-        const char* newlink = rootfs_alloc(linkbuf);
-        free((void*)linkbuf);
-        memset(buf, 0, ret); //don't modify
+        assert(ret < sizeof(mybuf));
+        const char* newlink = rootfs_alloc(mybuf);
         size_t len = strlen(newlink);
         if(len > bufsize) len = bufsize;
         memcpy(buf, newlink, len);
@@ -334,6 +337,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
+EXPORT
 ssize_t VROOT_API_NAME(readlink)(const char * path, char* buf, size_t bufsiz)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);

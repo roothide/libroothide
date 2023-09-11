@@ -1,4 +1,4 @@
-#include "roothide.h"
+#include "libroothide.h"
 #include "common.h"
 
 EXPORT

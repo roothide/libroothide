@@ -1,12 +1,15 @@
 #include "common.h"
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/param.h>
 
 int is_jbrand_value(uint64_t value)
 {
-//    uint8_t check = value>>8 ^ value >> 16 ^ value>>24 ^ value>>32 ^ value>>40 ^ value>>48 ^ value>>56;
-//    return check == (uint8_t)value;
-    return 1;
+//return 1;
+    
+   uint8_t check = value>>8 ^ value >> 16 ^ value>>24 ^ value>>32 ^ value>>40 ^ value>>48 ^ value>>56;
+   return check == (uint8_t)value;
 }
 
 int is_jbroot_name(const char* name)

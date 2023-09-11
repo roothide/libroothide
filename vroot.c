@@ -26,7 +26,7 @@
 #include <fts.h>
 #include <glob.h>
 
-#include "roothide.h"
+#include "libroothide.h"
 #include "common.h"
 
 #define jbrootat_alloc(a,b,c) jbrootat_alloc(a,b)
@@ -43,7 +43,9 @@
 
 #define VROOT_API_WRAP(RET,NAME,ARGTYPES,ARGS,PATHARG) EXPORT RET vroot_##NAME ARGTYPES {\
 VROOT_LOG("*vroot_%s %s\n", #NAME, PATHARG);\
+    int olderr = errno;\
     char* newpath = (char*)jbroot_alloc(PATHARG);\
+    errno = olderr;\
     RET ret = NAME ARGS;\
     if(newpath) free((void*)newpath);\
     return ret;\
@@ -51,7 +53,9 @@ VROOT_LOG("*vroot_%s %s\n", #NAME, PATHARG);\
 
 #define VROOTAT_API_WRAP(RET,NAME,ARGTYPES,ARGS,FD,PATHARG,ATFLAG) EXPORT RET vroot_##NAME ARGTYPES {\
 VROOT_LOG("*vrootat_%s %d %08X %s\n", #NAME, FD, ATFLAG, PATHARG);\
+    int olderr = errno;\
     char* newpath = (char*)jbrootat_alloc(FD,PATHARG,ATFLAG);\
+    errno = olderr;\
     RET ret = NAME ARGS;\
     if(newpath) free((void*)newpath);\
     return ret;\
@@ -572,7 +576,7 @@ VROOT_LOG("@%s %d\n",__FUNCTION__, cmd);
     if(ret == 0)
     {
         if(cmd == F_GETPATH)
-        {
+        { //buf size is always PATH_MAX
             char* pathbuf = arg;
             if(pathbuf) {
                 const char* rp = rootfs_alloc(pathbuf);
@@ -761,7 +765,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 char* VROOT_API_NAME(getcwd)(char *buf, size_t bufsize)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
-
+    //the caller buf may too small for real fs path???
     char* ret = getcwd(buf, bufsize);
     if(ret) {
         const char* newpath = rootfs_alloc(ret);

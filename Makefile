@@ -1,25 +1,29 @@
-CC      ?= xcrun -sdk iphoneos clang
+CC      ?= xcrun -sdk iphoneos clang -arch arm64
 CPP		?= clang -E
 CFLAGS  ?= -miphoneos-version-min=15.0 -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path)
 
-ALL := libroothide.dylib libvroot.h libvroot.dylib libvrootapi.dylib updatelink symredirect jbrand jbroot rootfs
+ALL := roothideinit.dylib libroothide.dylib libvroot.h libvroot.dylib libvrootapi.dylib updatelink symredirect jbrand jbroot rootfs
 
-CFLAGS += -arch arm64 -arch arm64e
 LDFLAGS += -L./
+CFLAGS +=  -fvisibility=hidden 
+CCFLAGS += -fvisibility=hidden
 
-libroothide.dylib: jbroot.c jbroot.cpp jbroot.m cache.c common.c
-	$(CC) -fobjc-arc $(CFLAGS) $(LDFLAGS) -lstdc++ -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libroothide.dylib -o $@ $^
+roothideinit.dylib: init.c 
+	$(CC) -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -dynamiclib -install_name @loader_path/.jbroot/usr/lib/roothideinit.dylib -o $@ $^
+
+libroothide.dylib: roothideinit.dylib jbroot.c jbroot.cpp jbroot.m cache.c common.c
+	$(CC) -fobjc-arc -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -lstdc++ -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libroothide.dylib -o $@ $^
 	xcrun tapi stubify $@
 
 libvroot.h: vroot.h
 	$(CPP) $< > $@
 
 libvroot.dylib: libroothide.dylib vroot.c vroot_mktemp.c vroot.cpp vroot_rootfs.c common.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -lstdc++ -lroothide -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvroot.dylib -o $@ $^
+	$(CC) -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -lstdc++ -lroothide -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvroot.dylib -o $@ $^
 	xcrun tapi stubify $@
 
 libvrootapi.dylib: libvroot.dylib vrootapi.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -lvroot -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvrootapi.dylib -o $@ $^
+	$(CC) -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -lvroot -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvrootapi.dylib -o $@ $^
 	xcrun tapi stubify $@
 
 updatelink: updatelink.c libroothide.dylib
@@ -40,9 +44,13 @@ rootfs: cmdtool.c libroothide.dylib
 
 all: $(ALL)
 	mkdir devkit
-	cp ./roothide.h ./devkit/
+	mkdir devkit/libroothide
 	cp ./symredirect ./devkit/
-	cp ./libroothide.tbd ./devkit/
+	cp ./roothide-xcode.h ./devkit/roothide.h
+	cp ./libroothide.h ./devkit/libroothide/
+	cp ./libroothide_stub.h ./devkit/libroothide/
+	cp ./libroothide.tbd ./devkit/libroothide/
+	cp ./module.modulemap ./devkit/libroothide/
 	zip -r devkit.zip ./devkit
 
 clean:

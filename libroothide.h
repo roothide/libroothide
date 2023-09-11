@@ -1,8 +1,6 @@
 #ifndef ROOTHIDE_H
 #define ROOTHIDE_H
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #ifdef __cplusplus

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#include "roothide.h"
+#include "libroothide.h"
 #include "common.h"
 
 #define VROOT_API_NAME(NAME) vroot_##NAME
@@ -88,6 +88,7 @@ static find_temp_path_progress_t _mkstemp_dprotected_np_action(
 static const char padchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+EXPORT
 int
 VROOT_API_NAME(mkostemps)(char *path, int slen, int oflags)
 {
@@ -101,6 +102,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return (find_temp_path(AT_FDCWD, path, slen, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
 }
 
+EXPORT
 int
 VROOT_API_NAME(mkostempsat_np)(int dfd, char *path, int slen, int oflags)
 {
@@ -114,6 +116,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return (find_temp_path(dfd, path, slen, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
 }
 
+EXPORT
 int
 VROOT_API_NAME(mkstemps)(char *path, int slen)
 {
@@ -124,6 +127,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return (find_temp_path(AT_FDCWD, path, slen, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
 }
 
+EXPORT
 int
 VROOT_API_NAME(mkstempsat_np)(int dfd, char *path, int slen)
 {
@@ -134,6 +138,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return (find_temp_path(dfd, path, slen, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
 }
 
+EXPORT
 int
 VROOT_API_NAME(mkostemp)(char *path, int oflags)
 {
@@ -147,6 +152,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkostemps_action, &oflags, &fd) ? fd : -1);
 }
 
+EXPORT
 int
 VROOT_API_NAME(mkstemp)(char *path)
 {
@@ -157,6 +163,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return (find_temp_path(AT_FDCWD, path, 0, TRUE, _mkostemps_action, NULL, &fd) ? fd : -1);
 }
 
+EXPORT
 char *
 VROOT_API_NAME(mkdtemp)(char *path)
 {
@@ -166,6 +173,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             path : (char *)NULL);
 }
 
+EXPORT
 char *
 VROOT_API_NAME(mkdtempat_np)(int dfd, char *path)
 {
@@ -175,6 +183,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             path : (char *)NULL);
 }
 
+EXPORT
 char *
 _mktemp(char *path)
 {
@@ -184,6 +193,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
             path : (char *)NULL);
 }
 
+EXPORT
 char *
 VROOT_API_NAME(mktemp)(char *path)
 {
@@ -192,6 +202,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return (_mktemp(path));
 }
 
+EXPORT
 int
 VROOT_API_NAME(mkstemp_dprotected_np)(char *path, int class, int dpflags)
 {

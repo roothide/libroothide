@@ -1,5 +1,5 @@
 #include "common.h"
-#include "roothide.h"
+#include "libroothide.h"
 #include "cache.h"
 #include <unistd.h>
 #include <assert.h>
@@ -11,60 +11,14 @@
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/syslimits.h>
-#include <mach-o/dyld.h>
 
-static const char* JBRAND=NULL;
-static const char* JBROOT=NULL;
+#define JBRAND  __roothideinit_JBRAND
+#define JBROOT  __roothideinit_JBROOT
 
 EXPORT
 unsigned long long jbrand() {
-    return strtoll(JBRAND, NULL, 16);
+    return strtoull(JBRAND, NULL, 16);
 }
-
-static void __attribute__((__constructor__)) _jbroot_init()
-{    
-    JBRAND = getenv("JBRAND");
-    JBROOT = getenv("JBROOT");
-    
-    assert(JBRAND != NULL && JBROOT != NULL);
-    
-    JBRAND = strdup(JBRAND);
-    JBROOT = strdup(JBROOT);
-    
-    do { // only for jb process because some system process may crash when chdir
-        if(getppid() != 1)
-            break;
-        
-        char executablePath[PATH_MAX]={0};
-        uint32_t bufsize=sizeof(executablePath);
-        if(_NSGetExecutablePath(executablePath, &bufsize) != 0)
-            break;
-        
-        char realexepath[PATH_MAX];
-        if(!realpath(executablePath, realexepath))
-            break;
-            
-        char realjbroot[PATH_MAX];
-        if(!realpath(JBROOT, realjbroot))
-            break;
-        
-        if(realjbroot[strlen(realjbroot)] != '/')
-            strcat(realjbroot, "/");
-        
-        if(strncmp(realexepath, realjbroot, strlen(realjbroot)) != 0)
-            break;
-        
-        char pwd[PATH_MAX];
-        if(getcwd(pwd, sizeof(pwd)) == NULL)
-            break;
-        if(strcmp(pwd, "/") != 0)
-            break;
-    
-        assert(chdir(JBROOT)==0);
-        
-    } while(0);
-}
-
 
 //free after use
 static const char* __private_jbrootat_alloc(int fd, const char* path)
@@ -72,7 +26,7 @@ static const char* __private_jbrootat_alloc(int fd, const char* path)
     int olderr = errno;
     
     char atdir[PATH_MAX]={0};
-    fd==AT_FDCWD ? (long)getcwd(atdir,sizeof(atdir)) : fcntl(fd, F_GETPATH, atdir, sizeof(atdir));
+    fd==AT_FDCWD ? (long)getcwd(atdir,sizeof(atdir)) : fcntl(fd, F_GETPATH, atdir);
     JBPATH_LOG(" **jbrootat_alloc (%d)%s %s\n", fd, atdir, path);
     
     if(!path || !*path) {
@@ -214,7 +168,7 @@ const char* jbrootat_alloc(int fd, const char* path)
        && strncmp(fixedpath, "/"ROOTFS_NAME, sizeof("/"ROOTFS_NAME)-1)==0)
     {
     //    char atdir[PATH_MAX]={0};
-    //    fd==AT_FDCWD ? (long)getcwd(atdir,sizeof(atdir)) : fcntl(fd, F_GETPATH, atdir, sizeof(atdir));
+    //    fd==AT_FDCWD ? (long)getcwd(atdir,sizeof(atdir)) : fcntl(fd, F_GETPATH, atdir);
     //    printf(" **rootfs--> (%d)%s\n\t%s : %s\n", fd, atdir, path, fixedpath);
         
         if(fixedpath[sizeof("/"ROOTFS_NAME)-1]=='/') {
