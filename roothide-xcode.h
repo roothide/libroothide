@@ -1,5 +1,5 @@
-#ifdef THEOS_PACKAGE_SCHEME_ROOTHIDE
-#include "libroothide/libroothide.h"
+#if !defined(ROOTHIDE_USE_STUB) && !defined(THEOS_PACKAGE_SCHEME_ROOTFUL) && !defined(THEOS_PACKAGE_SCHEME_ROOTLESS)
+#include "roothide/roothide.h"
 #else
-#include "libroothide/libroothide_stub.h"
+#include "roothide/stub.h"
 #endif

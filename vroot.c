@@ -26,7 +26,7 @@
 #include <fts.h>
 #include <glob.h>
 
-#include "libroothide.h"
+#include "roothide.h"
 #include "common.h"
 
 #define jbrootat_alloc(a,b,c) jbrootat_alloc(a,b)

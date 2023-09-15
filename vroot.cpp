@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string>
 
-#include "libroothide.h"
+#include "roothide.h"
 #include "common.h"
 
 #define VROOT_API_NAME(NAME) vroot_##NAME

@@ -1,5 +1,5 @@
 #include "common.h"
-#include "libroothide.h"
+#include "roothide.h"
 #include "cache.h"
 #include <unistd.h>
 #include <assert.h>

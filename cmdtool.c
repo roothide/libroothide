@@ -5,12 +5,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
-#include "libroothide.h"
+#include "roothide.h"
 
 int main(int argc, const char * argv[])
 {
     if(strcmp(getprogname(),"jbrand")==0) {
-        printf("%16llX\n", jbrand());
+        printf("%016llX\n", jbrand());
     }
     else if(strcmp(getprogname(),"jbroot")==0) {
         if(argc > 2) {
@@ -28,7 +28,7 @@ int main(int argc, const char * argv[])
         const char* path = argv[1];
         printf("%s\n", rootfs(path));
     } else {
-        fprintf(stderr, "wrong arg progname:%s\n", getprogname());
+        fprintf(stderr, "wrong progname:%s\n", getprogname());
         return -1;
     }
     return 0;

@@ -44,13 +44,12 @@ rootfs: cmdtool.c libroothide.dylib
 
 all: $(ALL)
 	mkdir devkit
-	mkdir devkit/libroothide
-	cp ./symredirect ./devkit/
+	mkdir devkit/roothide
 	cp ./roothide-xcode.h ./devkit/roothide.h
-	cp ./libroothide.h ./devkit/libroothide/
-	cp ./libroothide_stub.h ./devkit/libroothide/
-	cp ./libroothide.tbd ./devkit/libroothide/
-	cp ./module.modulemap ./devkit/libroothide/
+	cp ./roothide.h ./devkit/roothide/
+	cp ./stub.h ./devkit/roothide/
+	cp ./libroothide.tbd ./devkit/roothide/
+	cp ./module.modulemap ./devkit/roothide/
 	zip -r devkit.zip ./devkit
 
 clean:

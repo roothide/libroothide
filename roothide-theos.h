@@ -1,5 +1,5 @@
 #ifdef THEOS_PACKAGE_SCHEME_ROOTHIDE
-#include <libroothide/libroothide.h>
+#include <roothide/roothide.h>
 #else
-#include <libroothide/libroothide_stub.h>
+#include <roothide/stub.h>
 #endif

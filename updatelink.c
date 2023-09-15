@@ -5,9 +5,18 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/syslimits.h>
-#include "libroothide.h"
+#include "roothide.h"
+#include "common.h"
 
-#define JBROOT_SYMLINK_NAME ".jbroot"
+/*
+ file system w^x restricted, double jbroot structure.
+ all relative path symlinks(include .jbroot) in the directories
+ in this list will be processed as absolute paths based on the original rootfs
+  at the first time we updatelink. also need to be defined in updatelinks.sh
+*/
+const char* jbfirmlinks[] = {
+    "/var"
+};
 
 int main(int argc, const char * argv[]) {
     
@@ -43,13 +52,11 @@ int main(int argc, const char * argv[]) {
         
         printf("%s: %s\n", path, slink);
         
-        if(strncmp(slink, JBROOT_SYMLINK_NAME, sizeof(JBROOT_SYMLINK_NAME)-1)==0
-           && (slink[sizeof(JBROOT_SYMLINK_NAME)-1]=='/' || slink[sizeof(JBROOT_SYMLINK_NAME)-1]=='\0'))
+        char* tojbroot = &slink[sizeof(JB_ROOT_SYM)-1];
+        if(strncmp(slink, JB_ROOT_SYM, sizeof(JB_ROOT_SYM)-1)==0
+           && (*tojbroot=='/' || *tojbroot=='\0'))
         {
-            char abspath[PATH_MAX];
-            snprintf(abspath, sizeof(abspath), "%s", &slink[sizeof(JBROOT_SYMLINK_NAME)-1]);
-            
-            const char* newpath = jbroot(abspath);
+            const char* newpath = jbroot(tojbroot);
             
             // .jbroot links only exists in bootstrap and them should not move to others place, so do we need update them?
             // and updatelink need .jbroot to load dependence library nexttime
