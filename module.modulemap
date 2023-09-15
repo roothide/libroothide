@@ -1,5 +1,5 @@
-module libroothide {
-  header roothide.h"
+module roothide {
+  header "roothide.h"
 
   link "roothide"
 
