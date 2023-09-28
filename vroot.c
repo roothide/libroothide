@@ -25,6 +25,7 @@
 #include <ftw.h>
 #include <fts.h>
 #include <glob.h>
+#include <mach-o/dyld.h>
 
 #include "roothide.h"
 #include "common.h"
@@ -102,7 +103,7 @@ int oflag_to_atflag(int oflag)
 
 int VROOT_API_NAME(open)(const char * path, int flags, ...)
 {
-VROOT_LOG("@%s %08X\n",__FUNCTION__, flags, path);
+VROOT_LOG("@%s %08X %s\n",__FUNCTION__, flags, path);
 
     mode_t mode = 0;
     va_list ap;
@@ -200,117 +201,6 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     if(newname2) free((void*)newname2);
     return ret;
 }
-
-
-int VROOT_API_NAME(execvp)(const char * __file, char * const * __argv)
-{
-VROOT_LOG("@%s\n",__FUNCTION__);
-
-    /* If it's an absolute or relative path name, we need to handle. */
-    if(__file && __file[0] && strchr(__file, '/'))
-    {
-        const char* newpath = jbroot_alloc(__file);
-        int ret = execvp(newpath, __argv);
-        if(newpath) free((void*)newpath);
-        return ret;
-    }
-    return execvp(__file, __argv);
-}
-
-int VROOT_API_NAME(execvP)(const char * __file, const char * __searchpath, char * const * __argv)
-{
-VROOT_LOG("@%s\n",__FUNCTION__);
-
-    /* If it's an absolute or relative path name, we need to handle. */
-    if(__file && __file[0] && strchr(__file, '/'))
-    {
-        const char* newpath = jbroot_alloc(__file);
-        int ret = execvP(newpath, __searchpath, __argv);
-        if(newpath) free((void*)newpath);
-        return ret;
-    }
-    return execvP(__file, __searchpath, __argv);
-}
-
-int VROOT_API_NAME(execl)(const char *path, const char *arg0, ...)
-{
-VROOT_LOG("@%s\n",__FUNCTION__);
-
-    va_list args;
-    va_start(args, arg0);
-
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int arg_count = 0;
-    for (char *arg = va_arg(args_copy, char*); arg != NULL; arg = va_arg(args_copy, char*)) {
-        arg_count++;
-    }
-    va_end(args_copy);
-
-    char *argv[arg_count+1];
-    for (int i = 0; i < arg_count-1; i++) {
-        char *arg = va_arg(args, char*);
-        argv[i] = arg;
-    }
-    argv[arg_count] = NULL;
-
-    return VROOT_API_NAME(execv)(path, argv);
-}
-
-int VROOT_API_NAME(execle)(const char *path, const char *arg0, ... /*, (char *)0, char *const envp[] */)
-{
-VROOT_LOG("@%s\n",__FUNCTION__);
-
-    va_list args;
-    va_start(args, arg0);
-
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int arg_count = 0;
-    for (char *arg = va_arg(args_copy, char *); arg != NULL; arg = va_arg(args_copy, char *)) {
-        arg_count++;
-    }
-    va_end(args_copy);
-
-    char *argv[arg_count+1];
-    for (int i = 0; i < arg_count-1; i++) {
-        char *arg = va_arg(args, char*);
-        argv[i] = arg;
-    }
-    argv[arg_count] = NULL;
-
-    //char *nullChar = va_arg(args, char*);
-
-    char **envp = va_arg(args, char**);
-    return VROOT_API_NAME(execve)(path, argv, envp);
-}
-
-int VROOT_API_NAME(execlp)(const char *file, const char *arg0, ...)
-{
-VROOT_LOG("@%s\n",__FUNCTION__);
-
-    va_list args;
-    va_start(args, arg0);
-
-    // Get argument count
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int arg_count = 0;
-    for (char *arg = va_arg(args_copy, char*); arg != NULL; arg = va_arg(args_copy, char*)) {
-        arg_count++;
-    }
-    va_end(args_copy);
-
-    char *argv[arg_count+1];
-    for (int i = 0; i < arg_count-1; i++) {
-        char *arg = va_arg(args, char*);
-        argv[i] = arg;
-    }
-    argv[arg_count] = NULL;
-
-    return VROOT_API_NAME(execvp)(file, argv);
-}
-
 
 int VROOT_API_NAME(rename)(const char *__old, const char *__new)
 {
@@ -706,45 +596,6 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
-#include <mach-o/dyld.h>
-void* VROOT_API_NAME(dlopen)(const char * __path, int __mode)
-{
-VROOT_LOG("@%s\n",__FUNCTION__);
-
-    if(_dyld_shared_cache_contains_path(__path)) {
-        return dlopen(__path, __mode);
-    }
-
-    const char* newpath = jbroot_alloc(__path);
-    void* ret = dlopen(newpath, __mode);
-    if(newpath) free((void*)newpath);
-    return ret;
-}
-int VROOT_API_NAME(dladdr)(const void * addr, Dl_info * info)
-{
-VROOT_LOG("@%s\n",__FUNCTION__);
-
-    int ret = dladdr(addr, info);
-    if(ret != 0 && !_dyld_shared_cache_contains_path(info->dli_fname))
-    {
-        //need use cache
-        const char* newfname = rootfs(info->dli_fname);
-        if(strcmp(info->dli_fname, newfname) != 0)
-        {
-            info->dli_fname = newfname;
-        }
-
-        //sname??? fakechroot do this, do we need?
-//        const char* newsname = jbroot(info->dli_sname);
-//        if(strcmp(info->dli_sname, newsname) != 0)
-//        {
-//            info->dli_sname = newsname;
-//        }
-    }
-    return ret;
-}
-
-
 char* VROOT_API_NAME(getwd)(char* buf)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
@@ -1001,8 +852,92 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     return ret;
 }
 
-void __testfunc()
+int VROOT_API_NAME(_NSGetExecutablePath)(char* buf, uint32_t* bufsize)
 {
-    //unwhiteout;
+VROOT_LOG("@%s\n",__FUNCTION__);
+
+    uint32_t oldsize = *bufsize; 
+    int ret = _NSGetExecutablePath(buf, bufsize);
+    if(ret == 0) {
+        const char* newpath = rootfs_alloc(buf);
+        int newsize = strlen(newpath);
+        if(newsize < oldsize) {
+            strcpy(buf, newpath);
+        } else {
+            *bufsize = newsize+1;
+            ret = -1;
+        }
+        free((void*)newpath);
+    }
+    return ret;
 }
 
+
+// symbols array 
+
+char* gvrootsymnames[] = {
+#undef VROOT_API_DEF
+#undef VROOTAT_API_DEF
+#undef VROOT_API_WRAP
+#undef VROOTAT_API_WRAP
+#define VROOT_API_DEF(RET,NAME,ARGTYPES) #NAME,
+#define VROOTAT_API_DEF(RET,NAME,ARGTYPES) #NAME,
+#define VROOT_API_WRAP(RET,NAME,ARGTYPES,ARGS,PATHARG) #NAME,
+#define VROOTAT_API_WRAP(RET,NAME,ARGTYPES,ARGS,FD,PATHARG,ATFLAG) #NAME,
+#define VROOT_INTERNAL
+#undef VROOT_INTERNAL_H
+#include "vroot.h"
+#undef VROOT_INTERNAL_H
+#undef VROOT_INTERNAL
+#undef VROOT_API_DEF
+#undef VROOTAT_API_DEF
+#undef VROOT_API_WRAP
+#undef VROOTAT_API_WRAP
+
+NULL
+};
+
+void* gvrootsymaddrs[] = {
+#undef VROOT_API_DEF
+#undef VROOTAT_API_DEF
+#undef VROOT_API_WRAP
+#undef VROOTAT_API_WRAP
+#define VROOT_API_DEF(RET,NAME,ARGTYPES) NAME,
+#define VROOTAT_API_DEF(RET,NAME,ARGTYPES) NAME,
+#define VROOT_API_WRAP(RET,NAME,ARGTYPES,ARGS,PATHARG) NAME,
+#define VROOTAT_API_WRAP(RET,NAME,ARGTYPES,ARGS,FD,PATHARG,ATFLAG) NAME,
+#define VROOT_INTERNAL
+#undef VROOT_INTERNAL_H
+#include "vroot.h"
+#undef VROOT_INTERNAL_H
+#undef VROOT_INTERNAL
+#undef VROOT_API_DEF
+#undef VROOTAT_API_DEF
+#undef VROOT_API_WRAP
+#undef VROOTAT_API_WRAP
+
+NULL
+};
+
+
+void* gvrootapiaddrs[] = {
+#undef VROOT_API_DEF
+#undef VROOTAT_API_DEF
+#undef VROOT_API_WRAP
+#undef VROOTAT_API_WRAP
+#define VROOT_API_DEF(RET,NAME,ARGTYPES) vroot_##NAME,
+#define VROOTAT_API_DEF(RET,NAME,ARGTYPES) vroot_##NAME,
+#define VROOT_API_WRAP(RET,NAME,ARGTYPES,ARGS,PATHARG) vroot_##NAME,
+#define VROOTAT_API_WRAP(RET,NAME,ARGTYPES,ARGS,FD,PATHARG,ATFLAG) vroot_##NAME,
+#define VROOT_INTERNAL
+#undef VROOT_INTERNAL_H
+#include "vroot.h"
+#undef VROOT_INTERNAL_H
+#undef VROOT_INTERNAL
+#undef VROOT_API_DEF
+#undef VROOTAT_API_DEF
+#undef VROOT_API_WRAP
+#undef VROOTAT_API_WRAP
+
+NULL
+};

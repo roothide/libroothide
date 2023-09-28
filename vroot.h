@@ -26,15 +26,27 @@ MACRO_define VROOT_H
 #define VROOT_API_NAME(NAME) vroot_##NAME
 #define VROOTAT_API_NAME(NAME) vroot_##NAME
 
-//what about tweaks? VROOT_API_DEF(void*, dlsym, (void * __handle, const char * __symbol))
+/* dlfcn.h */
+VROOT_API_DEF(void*, dlsym, (void * __handle, const char * __symbol))
 
 VROOT_API_DEF(void*, dlopen, (const char * __path, int __mode))
 
 VROOT_API_DEF(int, dladdr, (const void * addr, Dl_info * info) )
 
+/* spawn.h */
 VROOT_API_WRAP(int, posix_spawn, (pid_t * pid, const char * path, const posix_spawn_file_actions_t *file_actions,
-                               const posix_spawnattr_t * attrp, char *const argv[], char *const envp[]),
+    const posix_spawnattr_t * attrp, char *const argv[], char *const envp[]),
     (pid,newpath,file_actions,attrp,argv,envp), path)
+
+VROOT_API_DEF(int, posix_spawnp, (pid_t * pid, const char * path, const posix_spawn_file_actions_t *file_actions,
+    const posix_spawnattr_t * attrp, char *const argv[], char *const envp[]))
+
+VROOT_API_WRAP(int, posix_spawn_file_actions_addopen, (posix_spawn_file_actions_t * file_actions,
+	   int fildes, const char *restrict path, int oflag, mode_t mode),
+       (file_actions,fildes,path,oflag,mode), path)
+
+VROOT_API_WRAP(int, posix_spawn_file_actions_addchdir_np, (posix_spawn_file_actions_t *restrict file_actions,
+	   const char *restrict	path), (file_actions,path), path)
 
 
 /* fcntl.h  */
@@ -110,8 +122,8 @@ VROOTAT_API_DEF(char*, mkdtempat_np, (int dfd, char *path))
 VROOTAT_API_DEF(int, mkstempsat_np, (int dfd, char *path, int slen))
 VROOTAT_API_DEF(int,mkostempsat_np,(int dfd,char*path,int slen,int oflags))
 
-
-VROOT_API_WRAP(int, execv, (const char * __path, char * const * __argv), (newpath,__argv), __path)
+VROOT_API_DEF(int, execv, (const char * __path, char * const * __argv))
+//VROOT_API_WRAP(int, execv, (const char * __path, char * const * __argv), (newpath,__argv), __path)
 VROOT_API_WRAP(int, execve, (const char * __file, char * const * __argv, char * const * __envp), (newpath,__argv,__envp), __file)
 
 VROOT_API_DEF(int, execvP, (const char * __file, const char * __searchpath, char * const * __argv))
@@ -296,6 +308,8 @@ VROOT_API_DEF(int, glob_b, (const char * pattern, int flags, int (^ errfunc) (co
 /* sysdir.h */
 //not really fs access, sysdir_search_path_enumeration_state sysdir_get_next_search_path_enumeration(sysdir_search_path_enumeration_state state, char *path);
 
+/* dyld.h */
+VROOT_API_DEF(int, _NSGetExecutablePath, (char* buf, uint32_t* bufsize))
 
 #ifndef VROOT_INTERNAL
 MACRO_endif /* VROOT_H */
