@@ -20,3 +20,4 @@ extern const char* __roothideinit_JBROOT;
 
 #define VROOT_LOG(...) {if(getenv("VROOTLOG")&&atoi(getenv("VROOTLOG"))) {printf(__VA_ARGS__);fflush(stdout);}}
 
+char* backtrace();

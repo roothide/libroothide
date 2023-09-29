@@ -26,6 +26,7 @@
 #include <fts.h>
 #include <glob.h>
 #include <mach-o/dyld.h>
+#include <libgen.h>
 
 #include "roothide.h"
 #include "common.h"
@@ -194,11 +195,25 @@ int VROOT_API_NAME(symlink)(const char *name1, const char *name2)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
 
-    const char* newname1 = jbroot_alloc(name1);
+    int ret = 0;
     const char* newname2 = jbroot_alloc(name2);
-    int ret = symlink(newname1, newname2);
-    if(newname1) free((void*)newname1);
+
+    char dname[PATH_MAX];
+    int dfd = open(dirname_r(newname2, dname), O_RDONLY);
+    if(dfd >= 0)
+    {
+        const char* newname1 = jbrootat_alloc(dfd, name1, 0);
+        ret = symlink(newname1, newname2);
+        if(newname1) free((void*)newname1);
+
+        close(dfd);
+
+    } else {
+        ret = -1;
+    }
+
     if(newname2) free((void*)newname2);
+
     return ret;
 }
 
@@ -229,12 +244,24 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOTAT_API_NAME(symlinkat)(const char *name1, int fd, const char *name2)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s %d %s\n",__FUNCTION__, name1, fd, name2);
 
-    const char* newname1 = jbroot_alloc(name1);
+    int ret = 0;
     const char* newname2 = jbrootat_alloc(fd, name2, 0); //***********
-    int ret = symlinkat(newname1, fd, newname2);
-    if(newname1) free((void*)newname1);
+
+    char dname[PATH_MAX];
+    int dfd = openat(fd, dirname_r(newname2, dname), O_RDONLY);
+    if(dfd >= 0)
+    {
+        const char* newname1 = jbrootat_alloc(dfd, name1, 0);
+        int ret = symlinkat(newname1, fd, newname2);
+        if(newname1) free((void*)newname1);
+        
+        close(dfd);
+    } else {
+        ret = -1;
+    }
+
     if(newname2) free((void*)newname2);
     return ret;
 }
@@ -366,7 +393,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 char* VROOT_API_NAME(realpath$DARWIN_EXTSN)(const char * path, char *resolved_path)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     char pathbuf[PATH_MAX]={0};
     const char* newpath = jbroot_alloc(path);
