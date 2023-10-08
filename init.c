@@ -52,6 +52,66 @@ pid_t __getppid()
     return procInfo.pbi_ppid;
 }
 
+#include <pwd.h>
+#include <libgen.h>
+#include <stdio.h>
+
+#define CONTAINER_PATH_PREFIX   "/private/var/mobile/Containers/Data/" // +/Application,PluginKitPlugin,InternalDaemon
+
+void redirectNSHomeDir(const char* rootdir)
+{
+    // char executablePath[PATH_MAX]={0};
+    // uint32_t bufsize=sizeof(executablePath);
+    // if(_NSGetExecutablePath(executablePath, &bufsize)==0 && strstr(executablePath,"testbin2"))
+    //     printf("redirectNSHomeDir %s, %s\n\n", rootdir, getenv("CFFIXED_USER_HOME"));
+
+    //for now libSystem should be initlized, container should be set.
+
+    char* homedir = NULL;
+
+/* 
+there is a bug in NSHomeDirectory,
+if a containerized root process changes its uid/gid, 
+NSHomeDirectory will return a home directory that it cannot access. (exclude NSTemporaryDirectory)
+We just keep this bug:
+*/
+    if(!issetugid()) // issetugid() should always be false at this time. (but how about persona-mgmt? idk)
+    {
+        homedir = getenv("CFFIXED_USER_HOME");
+        if(homedir)
+        {
+            if(strncmp(homedir, CONTAINER_PATH_PREFIX, sizeof(CONTAINER_PATH_PREFIX)-1) == 0)
+            {
+                return; //containerized
+            }
+            else
+            {
+                homedir = NULL; //from parent, drop it
+            }
+        }
+    }
+
+    if(!homedir) {
+        struct passwd* pwd = getpwuid(geteuid());
+        if(pwd && pwd->pw_dir) {
+            homedir = pwd->pw_dir;
+        }
+    }
+
+    // if(!homedir) {
+    //     //CFCopyHomeDirectoryURL does, but not for NSHomeDirectory
+    //     homedir = getenv("HOME");
+    // }
+
+    if(!homedir) {
+        homedir = "/var/empty";
+    }
+
+    char newhome[PATH_MAX]={0};
+    snprintf(newhome,sizeof(newhome),"%s/%s",rootdir,homedir);
+    setenv("CFFIXED_USER_HOME", newhome, 1);
+}
+
 static void __attribute__((__constructor__)) _roothide_init()
 {    
     const char* JBRAND = getenv("JBRAND");
@@ -61,12 +121,8 @@ static void __attribute__((__constructor__)) _roothide_init()
     
     __roothideinit_JBRAND = strdup(JBRAND);
     __roothideinit_JBROOT = strdup(JBROOT);
-    
+
     do { // only for jb process because some system process may crash when chdir
-        pid_t ppid = __getppid();
-        assert(ppid > 0);
-        if(ppid != 1)
-            break;
         
         char executablePath[PATH_MAX]={0};
         uint32_t bufsize=sizeof(executablePath);
@@ -85,6 +141,14 @@ static void __attribute__((__constructor__)) _roothide_init()
             strcat(realjbroot, "/");
         
         if(strncmp(realexepath, realjbroot, strlen(realjbroot)) != 0)
+            break;
+
+        //for jailbroken binaries
+        redirectNSHomeDir(JBROOT);
+    
+        pid_t ppid = __getppid();
+        assert(ppid > 0);
+        if(ppid != 1)
             break;
         
         char pwd[PATH_MAX];

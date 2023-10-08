@@ -119,9 +119,11 @@ int VROOT_API_NAME(lstat)(const char * path, struct stat *sb)
 {
 VROOT_LOG("@%s\n",__FUNCTION__);
 
+    int olderr = errno;
     const char* newpath = jbroot_alloc(path);
+    errno = olderr;
     int ret = lstat(newpath, sb);
-
+     olderr = errno;
     if(ret==0) {
         if(S_ISLNK(sb->st_mode)) {
             struct stat st={0};
@@ -163,7 +165,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
     }
 
     free((void*)newpath);
-
+    errno = olderr;
     return ret;
 }
 
