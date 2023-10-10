@@ -523,11 +523,12 @@ VROOT_LOG("@%s\n",__FUNCTION__);
         
         memset(&newaddr_un, 0, sizeof(struct sockaddr_un));
         newaddr_un.sun_family = addr_un->sun_family;
-        strlcpy(newaddr_un.sun_path, path, sizeof(newaddr_un.sun_path));
+        strlcpy(newaddr_un.sun_path, newpath, sizeof(newaddr_un.sun_path));
         
         free((void*)newpath);
         
-        if (strlen(path) >= af_unix_path_max) {
+        if (strlen(newpath) >= af_unix_path_max) {
+            abort();
             errno = (ENAMETOOLONG);
             return -1;
         }
@@ -553,14 +554,16 @@ VROOT_LOG("@%s\n",__FUNCTION__);
         const char *path = addr_un->sun_path;
 
         const char* newpath = jbroot_alloc(path);
+VROOT_LOG("@%s %s : %s\n",__FUNCTION__, path, newpath);
         
         memset(&newaddr_un, 0, sizeof(struct sockaddr_un));
         newaddr_un.sun_family = addr_un->sun_family;
-        strlcpy(newaddr_un.sun_path, path, sizeof(newaddr_un.sun_path));
+        strlcpy(newaddr_un.sun_path, newpath, sizeof(newaddr_un.sun_path));
         
         free((void*)newpath);
         
-        if (strlen(path) >= af_unix_path_max) {
+        if (strlen(newpath) >= af_unix_path_max) {
+            abort();
             errno = (ENAMETOOLONG);
             return -1;
         }
