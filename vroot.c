@@ -27,6 +27,7 @@
 #include <glob.h>
 #include <mach-o/dyld.h>
 #include <libgen.h>
+#include <sys/acl.h>
 
 #include "roothide.h"
 #include "common.h"
@@ -606,7 +607,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
     socklen_t origlen = *addrlen;
     
-    int ret = getpeername(sockfd, addr, addrlen);
+    int ret = getsockname(sockfd, addr, addrlen);
     
     struct sockaddr_un *addr_un = (struct sockaddr_un *)(addr);
     if (addr_un->sun_family == AF_UNIX && addr_un->sun_path[0]) {

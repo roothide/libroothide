@@ -12,8 +12,6 @@
 #include "common.h"
 #include "roothide.h"
 
-char** environ;
-
 #define VROOT_API_NAME(NAME) vroot_##NAME
 #define VROOTAT_API_NAME(NAME) vroot_##NAME
 

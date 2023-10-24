@@ -1,4 +1,6 @@
 
+extern char** environ;
+
 #define JB_ROOT_SYM  ".jbroot"
 #define ROOTFS_NAME   "rootfs"
 

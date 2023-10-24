@@ -311,6 +311,16 @@ VROOT_API_DEF(int, glob_b, (const char * pattern, int flags, int (^ errfunc) (co
 /* dyld.h */
 VROOT_API_DEF(int, _NSGetExecutablePath, (char* buf, uint32_t* bufsize))
 
+/* sys/acl.h */
+// VROOT_API_WRAP(int, acl_valid_file_np, (const char *path, acl_type_t type, acl_t acl), (newpath,type,acl), path)
+// VROOT_API_WRAP(int, acl_valid_link_np, (const char *path, acl_type_t type, acl_t acl), (newpath,type,acl), path)
+// VROOT_API_WRAP(int, acl_delete_def_file, (const char *path_p), (newpath), path_p) /* not supported */
+// VROOT_API_WRAP(acl_t, acl_get_file, (const char *path_p, acl_type_t type), (newpath,type), path_p)
+// VROOT_API_WRAP(acl_t, acl_get_link_np, (const char *path_p, acl_type_t type), (newpath,type), path_p)
+// VROOT_API_WRAP(int, acl_set_file, (const char *path_p, acl_type_t type, acl_t acl), (newpath,type,acl), path_p)
+// VROOT_API_WRAP(int, acl_set_link_np, (const char *path_p, acl_type_t type, acl_t acl), (newpath,type,acl), path_p)
+
+
 #ifndef VROOT_INTERNAL
 MACRO_endif /* VROOT_H */
 #endif
