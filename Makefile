@@ -19,7 +19,7 @@ libvroot.h: vroot.h
 	$(CPP) $< > $@
 
 libvroot.dylib: libroothide.dylib vroot.c vroot_mktemp.c vroot.cpp vroot_rootfs.c vroot_exec.c vroot_dlfcn.c common.c debug.m
-	$(CC) -fobjc-arc  -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -lstdc++ -lroothide -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvroot.dylib -o $@ $^
+	$(CC) -fobjc-arc -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -lstdc++ -lroothide -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvroot.dylib -o $@ $^
 	xcrun tapi stubify $@
 
 libvrootapi.dylib: libvroot.dylib vrootapi.c
