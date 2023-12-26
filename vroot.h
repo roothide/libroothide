@@ -26,6 +26,8 @@ MACRO_define VROOT_H
 #define VROOT_API_NAME(NAME) vroot_##NAME
 #define VROOTAT_API_NAME(NAME) vroot_##NAME
 
+#include <Availability.h>
+
 /* dlfcn.h */
 VROOT_API_DEF(void*, dlsym, (void * __handle, const char * __symbol))
 
@@ -180,8 +182,10 @@ VROOT_API_WRAP(int, stat, (const char *path, struct stat *sb), (newpath,sb), pat
 VROOTAT_API_WRAP(int, fchmodat, (int fd, const char *path, mode_t mode, int flag), (fd,newpath,mode,flag), fd, path, flag)
 VROOTAT_API_DEF(int, fstatat, (int fd, const char *path, struct stat *sb, int flag) )
 VROOTAT_API_WRAP(int, mkdirat, (int fd, const char * path, mode_t mode), (fd,newpath,mode), fd, path, 0)
-//ios16 VROOTAT_API_WRAP(int, mkfifoat, (int fd, const char * path, mode_t mode), (fd,newpath,mode), fd, path, 0)
-//ios16 VROOTAT_API_WRAP(int, mknodat, (int fd, const char *path, mode_t mode, dev_t dev), (fd,newpath,mode,dev), fd, path, 0)
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0
+VROOTAT_API_WRAP(int, mkfifoat, (int fd, const char * path, mode_t mode), (fd,newpath,mode), fd, path, 0)
+VROOTAT_API_WRAP(int, mknodat, (int fd, const char *path, mode_t mode, dev_t dev), (fd,newpath,mode,dev), fd, path, 0)
+#endif
 
 VROOTAT_API_WRAP(int, utimensat, (int fd, const char *path, const struct timespec times[2], int flag), (fd,newpath,times,flag), fd,path,flag)
 
@@ -211,7 +215,9 @@ VROOTAT_API_WRAP(int,getattrlistat,(int fd,const char* path, struct attrlist * a
 
 VROOTAT_API_WRAP(int,setattrlistat,(int fd,const char* path, struct attrlist * attrList, void * attrBuf,
                                   size_t attrBufSize, unsigned int options), (fd,newpath,attrList,attrBuf,attrBufSize,options), fd,path,0)
-//ios16 ssize_t freadlink(int, char * __restrict, size_t) __API_AVAILABLE(macos(13.0), ios(16.0), tvos(16.0), watchos(9.0));
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0
+VROOT_API_DEF(ssize_t, freadlink, (int fd, char* buf, size_t bufsize))
+#endif
 
 VROOTAT_API_WRAP(int, faccessat, (int fd, const char *path, int mode, int flag), (fd,newpath,mode,flag), fd, path,flag)
 VROOTAT_API_WRAP(int, fchownat, (int fd, const char *path, uid_t owner, gid_t group, int flag), (fd,newpath,owner,group,flag), fd, path,flag)
@@ -319,7 +325,6 @@ VROOT_API_WRAP(acl_t, acl_get_file, (const char *path_p, acl_type_t type), (newp
 VROOT_API_WRAP(acl_t, acl_get_link_np, (const char *path_p, acl_type_t type), (newpath,type), path_p)
 VROOT_API_WRAP(int, acl_set_file, (const char *path_p, acl_type_t type, acl_t acl), (newpath,type,acl), path_p)
 VROOT_API_WRAP(int, acl_set_link_np, (const char *path_p, acl_type_t type, acl_t acl), (newpath,type,acl), path_p)
-
 
 #ifndef VROOT_INTERNAL
 MACRO_endif /* VROOT_H */

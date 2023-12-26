@@ -28,6 +28,7 @@
 #include <mach-o/dyld.h>
 #include <libgen.h>
 #include <sys/acl.h>
+#include <util.h>
 
 #include "roothide.h"
 #include "common.h"
@@ -220,7 +221,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(rename)(const char *__old, const char *__new)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s => %s\n",__FUNCTION__, __old, __new);
 
     const char* new__old = jbroot_alloc(__old);
     const char* new__new = jbroot_alloc(__new);

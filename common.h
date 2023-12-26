@@ -8,9 +8,12 @@ extern char** environ;
 #define JB_ROOT_PARENT "/var/containers/Bundle/Application"
 #define JB_RAND_LENGTH  (sizeof(uint64_t)*sizeof(char)*2)
 
+#define IGNORE_JBRAND_VERIFY    0
+
 #define EXPORT __attribute__ ((visibility ("default")))
 
 int is_jbroot_name(const char* name);
+unsigned long long resolve_jbrand_value(const char* name);
 
 extern const char* __roothideinit_JBRAND;
 extern const char* __roothideinit_JBROOT;

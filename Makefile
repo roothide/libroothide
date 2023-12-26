@@ -8,7 +8,7 @@ LDFLAGS += -L./
 CFLAGS +=  -fvisibility=hidden 
 CCFLAGS += -fvisibility=hidden
 
-roothideinit.dylib: init.c 
+roothideinit.dylib: init.c common.c
 	$(CC) -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -dynamiclib -install_name @loader_path/.jbroot/usr/lib/roothideinit.dylib -o $@ $^
 
 libroothide.dylib: roothideinit.dylib jbroot.c jbroot.cpp jbroot.m cache.c common.c
@@ -16,7 +16,7 @@ libroothide.dylib: roothideinit.dylib jbroot.c jbroot.cpp jbroot.m cache.c commo
 	xcrun tapi stubify $@
 
 libvroot.h: vroot.h
-	$(CPP) $< > $@
+	$(CPP) $(CFLAGS) $< > $@
 
 libvroot.dylib: libroothide.dylib vroot.c vroot_mktemp.c vroot.cpp vroot_rootfs.c vroot_exec.c vroot_dlfcn.c common.c debug.m
 	$(CC) -fobjc-arc -arch arm64 -arch arm64e $(CFLAGS) $(LDFLAGS) -lstdc++ -lroothide -dynamiclib -install_name @loader_path/.jbroot/usr/lib/libvroot.dylib -o $@ $^

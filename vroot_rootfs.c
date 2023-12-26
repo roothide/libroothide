@@ -324,7 +324,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
         }
     }
                 
-    char mybuf[PATH_MAX]={0}; //the caller buf may too small for real fs link
+    char mybuf[PATH_MAX]={0}; //the caller buf may be too small for real fs link
     ssize_t ret = readlinkat(fd, newpath, mybuf, sizeof(mybuf)-1);
     if(newpath) free((void*)newpath);
     if(ret > 0) {
@@ -346,3 +346,25 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
     return VROOT_API_NAME(readlinkat)(AT_FDCWD, path, buf, bufsiz);
 }
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0
+EXPORT
+ssize_t VROOT_API_NAME(freadlink)(int fd, char* buf, size_t bufsize)
+{
+VROOT_LOG("@%s\n",__FUNCTION__);
+
+    char mybuf[PATH_MAX]={0}; //the caller buf may be too small for real fs link
+    ssize_t ret = freadlink(fd, mybuf, sizeof(mybuf)-1);
+    if(ret > 0) {
+        assert(ret < sizeof(mybuf));
+        const char* newlink = rootfs_alloc(mybuf);
+        size_t len = strlen(newlink);
+        if(len > bufsize) len = bufsize;
+        memcpy(buf, newlink, len);
+        free((void*)newlink);
+        return len;
+    }
+    return ret;
+
+}
+#endif
