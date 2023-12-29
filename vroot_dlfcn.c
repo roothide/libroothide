@@ -16,9 +16,9 @@
 EXPORT
 void* VROOT_API_NAME(dlopen)(const char * __path, int __mode)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s %x\n",__FUNCTION__, __path, __mode);
 
-    if(_dyld_shared_cache_contains_path(__path)) {
+    if(__path && _dyld_shared_cache_contains_path(__path)) {
         return dlopen(__path, __mode);
     }
 
