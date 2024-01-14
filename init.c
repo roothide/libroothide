@@ -59,7 +59,7 @@ pid_t __getppid()
 
 #define CONTAINER_PATH_PREFIX   "/private/var/mobile/Containers/Data/" // +/Application,PluginKitPlugin,InternalDaemon
 
-void redirectNSHomeDir(const char* rootdir)
+void redirectEnvPath(const char* rootdir)
 {
     // char executablePath[PATH_MAX]={0};
     // uint32_t bufsize=sizeof(executablePath);
@@ -185,7 +185,7 @@ static void __attribute__((__constructor__)) _roothide_init()
             break;
 
         //for jailbroken binaries
-        redirectNSHomeDir(JBROOT);
+        redirectEnvPath(JBROOT);
     
         pid_t ppid = __getppid();
         assert(ppid > 0);

@@ -10,6 +10,7 @@
 #include <mach-o/nlist.h>
 #include <mach-o/loader.h>
 #include <mach-o/fixup-chains.h>
+#include <mach/vm_page_size.h>
 #include <assert.h>
 #include <libgen.h>
 
@@ -33,6 +34,8 @@ std::vector<std::string> g_shim_apis = {
 #define VROOT_INTERNAL
 #include "vroot.h"
 };
+
+int g_slice_index = 0;
 
 const char* g_shim_install_name = "@loader_path/.jbroot/usr/lib/libvrootapi.dylib";
 
@@ -64,7 +67,7 @@ char* getLibraryByOrdinal(struct mach_header_64* header, int ordinal)
     return NULL;
 }
 
-bool processSymbol(struct mach_header_64* header, int ordinal, char* symbol)
+bool processSymbol(struct mach_header_64* header, int ordinal, const char* symbol)
 {
     char* library = getLibraryByOrdinal(header, ordinal);
     LOG("import %s from %x:%s\n", symbol, ordinal, library);
@@ -97,7 +100,311 @@ bool processSymbol(struct mach_header_64* header, int ordinal, char* symbol)
     return false;
 }
 
-int processTarget(void* slice)
+static size_t write_uleb128(uint64_t val, uint8_t buf[10])
+{
+    uint8_t* start=buf;
+    unsigned char c;
+    bool flag;
+    do {
+        c = val & 0x7f;
+        val >>= 7;
+        flag = val != 0;
+        *buf++ = c | (flag ? 0x80 : 0);
+    } while (flag);
+    return buf-start;
+}
+static size_t write_sleb128(uint64_t val, uint8_t buf[10])
+{
+    uint8_t* start=buf;
+    unsigned char c;
+    bool flag;
+    do {
+        c = val & 0x7f;
+        val >>= 7;
+        flag = c & 0x40 ? val != -1 : val != 0;
+        *buf++ = c | (flag ? 0x80 : 0);
+    } while (flag);
+    return buf-start;
+}
+static uint64_t read_uleb128(uint8_t** pp, uint8_t* end)
+{
+    uint8_t* p = *pp;
+    uint64_t result = 0;
+    int         bit = 0;
+    do {
+        if ( p == end ) {
+            abort();
+            break;
+        }
+        uint64_t slice = *p & 0x7f;
+
+        if ( bit > 63 ) {
+            abort();
+            break;
+        }
+        else {
+            result |= (slice << bit);
+            bit += 7;
+        }
+    }
+    while (*p++ & 0x80);
+    *pp = p;
+    return result;
+}
+static int64_t read_sleb128(uint8_t** pp, uint8_t* end)
+{
+    uint8_t* p = *pp;
+    int64_t  result = 0;
+    int      bit = 0;
+    uint8_t  byte = 0;
+    do {
+        if ( p == end ) {
+            abort();
+            break;
+        }
+        byte = *p++;
+        result |= (((int64_t)(byte & 0x7f)) << bit);
+        bit += 7;
+    } while (byte & 0x80);
+    *pp = p;
+    // sign extend negative numbers
+    if ( ((byte & 0x40) != 0) && (bit < 64) )
+        result |= (~0ULL) << bit;
+    return result;
+}
+
+char* BindCodeDesc[] = 
+{
+"BIND_OPCODE_DONE", //					0x00
+"BIND_OPCODE_SET_DYLIB_ORDINAL_IMM", //			0x10
+"BIND_OPCODE_SET_DYLIB_ORDINAL_ULEB", //			0x20
+"BIND_OPCODE_SET_DYLIB_SPECIAL_IMM", //			0x30
+"BIND_OPCODE_SET_SYMBOL_TRAILING_FLAGS_IMM", //		0x40
+"BIND_OPCODE_SET_TYPE_IMM", //				0x50
+"BIND_OPCODE_SET_ADDEND_SLEB", //				0x60
+"BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB", //			0x70
+"BIND_OPCODE_ADD_ADDR_ULEB", //				0x80
+"BIND_OPCODE_DO_BIND", //					0x90
+"BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB", //			0xA0
+"BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED", //			0xB0
+"BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB", //		0xC0
+"BIND_OPCODE_THREADED", //					0xD0
+};
+
+enum bindtype {
+    bindtype_bind,
+    bindtype_lazy,
+    bindtype_weak
+};
+
+#define rebuild(p, copysize, _resized) {\
+tmpcache = realloc(tmpcache, tmpsize+copysize);\
+memcpy((void*)((uint64_t)tmpcache+tmpsize), p, copysize);\
+tmpsize += copysize;\
+copied=true;\
+if(_resized) resized=true;\
+}
+
+void* rebind(int shimOrdinal, struct mach_header_64* header, enum bindtype type, void* data, uint32_t* size)
+{
+    bool rebuilt=false;
+    void* newbind = NULL;
+    size_t newsize = 0;
+
+    bool resized=false;
+    void* tmpcache = NULL;
+    size_t tmpsize = 0;
+    uint8_t* recordp = NULL;
+
+    uint8_t*  p    = (uint8_t*)data;
+    uint8_t*  end  = (uint8_t*)((uint64_t)data + *size);
+    const char*     symbolName = NULL;
+    int             libraryOrdinal = 0;
+    bool            libraryOrdinalSet = false;
+    bool            weakImport = false;
+    bool stop=false;
+    int i=0;
+    recordp = p;
+    while ( !stop && (p < end) ) 
+    {
+        bool copied=false;
+        uint8_t immediate = *p & BIND_IMMEDIATE_MASK;
+        uint8_t opcode = *p & BIND_OPCODE_MASK;
+        uint8_t* curp = p++;
+        static char const* bindtypedesc[] = {"bind","lazy","weak"};
+        LOG("[%s][%d] %02X %s %02X\n", bindtypedesc[type], i++, opcode, BindCodeDesc[opcode>>4], immediate);
+        switch (opcode) {
+            case BIND_OPCODE_DONE:
+                if(type!=bindtype_lazy) stop = true;
+                break;
+            case BIND_OPCODE_SET_DYLIB_ORDINAL_IMM:
+            {
+                assert(type != bindtype_weak);
+
+                libraryOrdinal = immediate;
+                libraryOrdinalSet = true;
+
+                LOG("%d => %d\n", libraryOrdinal, shimOrdinal);
+
+                if(shimOrdinal<BIND_IMMEDIATE_MASK) {
+                    uint8_t newcode = opcode | shimOrdinal;
+                    rebuild(&newcode, 1, false);
+                } else {
+                    uint8_t newop = BIND_OPCODE_SET_DYLIB_ORDINAL_ULEB;
+                    rebuild(&newop, 1, false);
+                    uint8_t ordinal[10];
+                    rebuild(ordinal, write_uleb128(shimOrdinal, ordinal), true);
+                }
+            }
+            break;
+
+            case BIND_OPCODE_SET_DYLIB_ORDINAL_ULEB:
+            {
+                assert(type != bindtype_weak);
+
+                uint8_t* oldp=p;
+                ++i;
+
+                libraryOrdinal = (int)read_uleb128(&p, end);
+                libraryOrdinalSet = true;
+
+                LOG("%d => %d\n", libraryOrdinal, shimOrdinal);
+
+                uint8_t ordinal[10];
+                int newlen = write_uleb128(shimOrdinal, ordinal);
+
+                rebuild(curp, 1, false);
+                rebuild(ordinal, newlen, newlen != (p-oldp));
+            }
+            break;
+
+            case BIND_OPCODE_SET_DYLIB_SPECIAL_IMM:
+                assert(type != bindtype_weak);
+                // the special ordinals are negative numbers
+                if ( immediate == 0 )
+                    libraryOrdinal = 0;
+                else {
+                    int8_t signExtended = BIND_OPCODE_MASK | immediate;
+                    libraryOrdinal = signExtended;
+                }
+                libraryOrdinalSet = true;
+                break;
+
+            case BIND_OPCODE_SET_SYMBOL_TRAILING_FLAGS_IMM:
+            {
+                ++i;
+                weakImport = ( (immediate & BIND_SYMBOL_FLAGS_WEAK_IMPORT) != 0 );
+                symbolName = (char*)p;
+                while (*p != '\0')
+                    ++p;
+                ++p;
+            }
+            break;
+
+            case BIND_OPCODE_SET_TYPE_IMM:
+                assert(type != bindtype_lazy);
+                break;
+            case BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB:
+                ++i;
+                read_uleb128(&p, end);
+                break;
+            case BIND_OPCODE_SET_ADDEND_SLEB:
+                ++i;
+                read_sleb128(&p, end);
+                break;
+
+
+            case BIND_OPCODE_DO_BIND:
+            {
+                if(processSymbol(header, libraryOrdinal, symbolName)) 
+                {
+                    if(resized) rebuilt=true;
+                    resized = false;
+
+                    assert(tmpcache != NULL);
+
+                    newbind = realloc(newbind, newsize+tmpsize);
+                    memcpy((void*)((uint64_t)newbind+newsize), tmpcache, tmpsize);
+                    newsize += tmpsize;
+
+                }
+                else
+                {
+                    int cursize = curp-recordp;
+                    newbind = realloc(newbind, newsize+cursize);
+                    memcpy((void*)((uint64_t)newbind+newsize), recordp, cursize);
+                    newsize += cursize;
+                }
+
+                recordp = curp;
+
+                if(tmpcache) free(tmpcache);
+                tmpcache=NULL;
+                tmpsize=0;
+            }
+            break;
+
+
+            case BIND_OPCODE_THREADED:
+                switch (immediate) {
+                    case BIND_SUBOPCODE_THREADED_SET_BIND_ORDINAL_TABLE_SIZE_ULEB:
+                    {
+                        ++i;
+                        uint64_t targetTableCount = read_uleb128(&p, end);
+                        assert (!( targetTableCount > 65535 ));
+                    }
+                    break;
+                    case BIND_SUBOPCODE_THREADED_APPLY:
+                        break;
+                    default:
+                        abort();
+                }
+                break;
+            case BIND_OPCODE_ADD_ADDR_ULEB:
+            case BIND_OPCODE_DO_BIND_ADD_ADDR_ULEB:
+                assert(type != bindtype_lazy);
+                read_uleb128(&p, end);
+                ++i;
+                break;
+            case BIND_OPCODE_DO_BIND_ADD_ADDR_IMM_SCALED:
+                assert(type != bindtype_lazy);
+                break;
+            case BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB:
+                assert(type != bindtype_lazy);
+                read_uleb128(&p, end);
+                ++i;
+                read_uleb128(&p, end);
+                ++i;
+                break;
+            default:
+                abort();
+        }
+
+        if(!copied) rebuild(curp, p-curp, false);
+    }
+
+    int leftsize = end - recordp;
+    if(leftsize > 0) {
+        newbind = realloc(newbind, newsize+leftsize);
+        memcpy((void*)((uint64_t)newbind+newsize), recordp, leftsize);
+        newsize += leftsize;
+    }
+
+    if(rebuilt) {
+        *size = newsize;
+        return newbind;
+    }
+
+    if(newbind) {
+        assert(*size == newsize);
+        memcpy(data, newbind, *size);
+        free(newbind);
+    }
+
+    return NULL;
+}
+
+int processTarget(int fd, void* slice)
 {
     uint32_t magic = *(uint32_t*)slice;
     if(magic != MH_MAGIC_64) {
@@ -115,6 +422,8 @@ int processTarget(void* slice)
     struct symtab_command* symtab = NULL;
     struct dysymtab_command* dysymtab = NULL;
     struct linkedit_data_command* fixup = NULL;
+    struct dyld_info_command* dyld_info = NULL;
+    struct linkedit_data_command* code_sign = NULL;
     
     struct load_command* lc = (struct load_command*)((uint64_t)header + sizeof(*header));
     for (int i = 0; i < header->ncmds; i++) {
@@ -181,7 +490,16 @@ int processTarget(void* slice)
                 fixup = (struct linkedit_data_command*)lc;
                 break;
             }
-                
+            
+            case LC_DYLD_INFO:
+            case LC_DYLD_INFO_ONLY:
+                assert(dyld_info==NULL);
+                dyld_info = (struct dyld_info_command*)lc;
+                break;
+
+            case LC_CODE_SIGNATURE:
+                code_sign = (struct linkedit_data_command*)lc;
+                break;    
         }
         
         /////////
@@ -311,10 +629,98 @@ int processTarget(void* slice)
         }
     }
 
+    if(dyld_info)
+    {
+        assert(dyld_info->bind_off != 0); //follow dyld
+
+        struct stat st;
+        assert(fstat(fd, &st)==0);
+        assert(st.st_size == (linkedit_seg->fileoff+linkedit_seg->filesize));
+
+        size_t newfsize = st.st_size;
+
+        if(dyld_info->bind_off && dyld_info->bind_size)
+        {
+            LOG("bind_off=%x size=%x\n", dyld_info->bind_off, dyld_info->bind_size);
+            uint32_t size = dyld_info->bind_size;
+            void* data = (void*)((uint64_t)header + dyld_info->bind_off);
+            void* newbind = rebind(shimOrdinal, header, bindtype_bind, data, &size);
+            LOG("new bind=%p size=%x\n", newbind, size);
+            if(newbind) 
+            {
+                assert(g_slice_index==0);
+
+                assert(lseek(fd, 0, SEEK_END)==newfsize);
+                assert(write(fd, newbind, size)==size);
+                dyld_info->bind_off = newfsize;
+                dyld_info->bind_size = size;
+                linkedit_seg->filesize += size;
+                linkedit_seg->vmsize += size;
+                newfsize += size;
+
+                free(newbind);
+            }
+        }
+        if(dyld_info->weak_bind_off && dyld_info->weak_bind_size)
+        {
+            LOG("weak_bind_off=%x size=%x\n", dyld_info->weak_bind_off, dyld_info->weak_bind_size);
+            uint32_t size = dyld_info->weak_bind_size;
+            void* data = (void*)((uint64_t)header + dyld_info->weak_bind_off);
+            void* newbind = rebind(shimOrdinal,header, bindtype_weak, data, &size);
+            LOG("new weak bind=%p size=%x\n", newbind, size);
+            assert(newbind == NULL); //weak bind, no ordinal
+        }
+        if(dyld_info->lazy_bind_off && dyld_info->lazy_bind_size)
+        {
+            LOG("lazy_bind_off=%x size=%x\n", dyld_info->lazy_bind_off, dyld_info->lazy_bind_size);
+            uint32_t size = dyld_info->lazy_bind_size;
+            void* data = (void*)((uint64_t)header + dyld_info->lazy_bind_off);
+            void* newbind = rebind(shimOrdinal,header, bindtype_lazy, data, &size);
+            LOG("new lazy bind=%p size=%x\n", newbind, size);
+            if(newbind) 
+            {
+                assert(g_slice_index==0);
+
+                assert(lseek(fd, 0, SEEK_END)==newfsize);
+                assert(write(fd, newbind, size)==size);
+                dyld_info->lazy_bind_off = newfsize;
+                dyld_info->lazy_bind_size = size;
+                linkedit_seg->filesize += size;
+                linkedit_seg->vmsize += size;
+                newfsize += size;
+
+                free(newbind);
+            }
+        }
+
+        if(code_sign && newfsize!=st.st_size)
+        {
+            // some machos has padding data in the end
+            // assert(st.st_size == (code_sign->dataoff+code_sign->datasize));
+
+            void* data = (void*)((uint64_t)header + code_sign->dataoff);
+            size_t size = code_sign->datasize;
+            assert(lseek(fd, 0, SEEK_END)==newfsize);
+            assert(write(fd, data, size)==size);
+            code_sign->dataoff = newfsize;
+            linkedit_seg->filesize += size;
+            linkedit_seg->vmsize += size;
+            newfsize += size; 
+        }
+
+        // for(int i=0; i<(newfsize%0x10); i++) {
+        //     int zero=0;
+        //     linkedit_seg->filesize++;
+        //     assert(write(fd, &zero, 1)==1);
+        // }
+
+        linkedit_seg->vmsize = round_page(linkedit_seg->vmsize);
+    }
+
     return 0;
 }
 
-int processMachO(const char* file, int (*process)(void*))
+int processMachO(const char* file, int (*process)(int,void*))
 {
     int fd = open(file, O_RDWR);
     if(fd < 0) {
@@ -344,8 +750,9 @@ int processMachO(const char* file, int (*process)(void*))
         int count = magic==FAT_MAGIC ? fathdr->nfat_arch : NXSwapInt(fathdr->nfat_arch);
         for(int i=0; i<count; i++) {
             uint32_t offset = magic==FAT_MAGIC ? archdr[i].offset : NXSwapInt(archdr[i].offset);
-            if(process((void*)((uint64_t)macho + offset)) < 0)
+            if(process(fd, (void*)((uint64_t)macho + offset)) < 0)
                return -1;
+            g_slice_index++;
         }
     } else if(magic==FAT_MAGIC_64 || magic==FAT_CIGAM_64) {
         struct fat_header* fathdr = (struct fat_header*)macho;
@@ -353,11 +760,12 @@ int processMachO(const char* file, int (*process)(void*))
         int count = magic==FAT_MAGIC_64 ? fathdr->nfat_arch : NXSwapInt(fathdr->nfat_arch);
         for(int i=0; i<count; i++) {
             uint64_t offset = magic==FAT_MAGIC_64 ? archdr[i].offset : NXSwapLongLong(archdr[i].offset);
-            if(process((void*)((uint64_t)macho + offset)) < 0)
+            if(process(fd, (void*)((uint64_t)macho + offset)) < 0)
                 return -1;
+            g_slice_index++;
         }
     } else if(magic == MH_MAGIC_64) {
-        return process((void*)macho);
+        return process(fd, (void*)macho);
     } else {
         fprintf(stderr, "unknown magic: %08x\n", magic);
         return -1;
