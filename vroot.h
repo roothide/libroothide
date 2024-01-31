@@ -182,7 +182,7 @@ VROOT_API_WRAP(int, stat, (const char *path, struct stat *sb), (newpath,sb), pat
 VROOTAT_API_WRAP(int, fchmodat, (int fd, const char *path, mode_t mode, int flag), (fd,newpath,mode,flag), fd, path, flag)
 VROOTAT_API_DEF(int, fstatat, (int fd, const char *path, struct stat *sb, int flag) )
 VROOTAT_API_WRAP(int, mkdirat, (int fd, const char * path, mode_t mode), (fd,newpath,mode), fd, path, 0)
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0
+#if defined(VROOT_API_LIST) || (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0)
 VROOTAT_API_WRAP(int, mkfifoat, (int fd, const char * path, mode_t mode), (fd,newpath,mode), fd, path, 0)
 VROOTAT_API_WRAP(int, mknodat, (int fd, const char *path, mode_t mode, dev_t dev), (fd,newpath,mode,dev), fd, path, 0)
 #endif
@@ -215,7 +215,7 @@ VROOTAT_API_WRAP(int,getattrlistat,(int fd,const char* path, struct attrlist * a
 
 VROOTAT_API_WRAP(int,setattrlistat,(int fd,const char* path, struct attrlist * attrList, void * attrBuf,
                                   size_t attrBufSize, unsigned int options), (fd,newpath,attrList,attrBuf,attrBufSize,options), fd,path,0)
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0
+#if defined(VROOT_API_LIST) || (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0)
 VROOT_API_DEF(ssize_t, freadlink, (int fd, char* buf, size_t bufsize))
 #endif
 

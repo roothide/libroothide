@@ -30,7 +30,7 @@ updatelink: updatelink.c libroothide.dylib
 	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^
 
 symredirect: symredirect.cpp
-	xcrun -sdk macosx clang -mmacosx-version-min=10.7 -std=c++11 -lstdc++ -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -std=c++11 -lstdc++ -o $@ $^
 
 jbrand: cmdtool.c libroothide.dylib
 	$(CC) $(CFLAGS) $(LDFLAGS) -lroothide -o $@ $^

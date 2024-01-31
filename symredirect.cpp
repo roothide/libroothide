@@ -31,6 +31,7 @@
 #define VROOTAT_API_WRAP(RET,NAME,ARGTYPES,ARGS,FD,PATHARG,ATFLAG) VROOT_SYMBOLE(NAME)
 
 std::vector<std::string> g_shim_apis = {
+#define VROOT_API_LIST
 #define VROOT_INTERNAL
 #include "vroot.h"
 };
@@ -414,6 +415,15 @@ int processTarget(int fd, void* slice)
     
     struct mach_header_64* header = (struct mach_header_64*)slice;
     
+    if((header->flags & MH_TWOLEVEL) == 0) {
+        printf("mach-o has no MH_TWOLEVEL\n");
+    }
+
+    if((header->flags & MH_FORCE_FLAT) != 0) {
+        fprintf(stderr, "mach-o has MH_FORCE_FLAT\n");
+        abort();
+    }
+
     int libOrdinal=1;
     int shimOrdinal=0;
     
@@ -548,7 +558,7 @@ int processTarget(int fd, void* slice)
             uint8_t  n_type = symbols64[i].n_type;
             
             int ordinal= GET_LIBRARY_ORDINAL(n_desc);
-            assert(ordinal > 0);
+            //assert(ordinal > 0); ordinal=0:BIND_SPECIAL_DYLIB_SELF
             
             // Handle defined weak def symbols which need to get a special ordinal
             if ( ((n_type & N_TYPE) == N_SECT) && ((n_type & N_EXT) != 0) && ((n_desc & N_WEAK_DEF) != 0) )
@@ -786,8 +796,10 @@ int main(int argc, const char * argv[])
         return 0;
     }
     
-    const char* shimfile = argv[1];
-    if(processMachO(shimfile, processTarget) < 0) {
+    const char* target = argv[1];
+    printf("***symredirect %s\n", target);
+    printf("vroot api count = %d\n", g_shim_apis.size());
+    if(processMachO(target, processTarget) < 0) {
         fprintf(stderr, "processTarget error!\n");
         return -1;
     }

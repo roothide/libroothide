@@ -72,7 +72,7 @@ int VROOT_API_NAME(readdir_r)(DIR* dir, struct dirent* d, struct dirent ** dp)
 VROOT_LOG("@%s\n",__FUNCTION__);
 
     int ret = readdir_r(dir,d,dp);
-    if(ret == 0) {
+    if(ret==0 && dp && *dp) {
         
         if((*dp)->d_type==DT_LNK && strcmp((*dp)->d_name, ROOTFS_NAME)==0)
         {
