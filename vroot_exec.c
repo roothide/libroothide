@@ -28,7 +28,7 @@ int _execvpe(const char *name, char * const argv[], char * const envp[]);
 EXPORT
 int VROOT_API_NAME(execl)(const char *name, const char *arg, ...)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s %s\n",__FUNCTION__, name, arg);
 
 	va_list ap;
 	const char **argv;
@@ -56,7 +56,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 int VROOT_API_NAME(execle)(const char *name, const char *arg, ...)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s %s\n",__FUNCTION__, name, arg);
 
 	va_list ap;
 	const char **argv;
@@ -86,7 +86,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 int VROOT_API_NAME(execvp)(const char *name, char * const *argv)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, name);
 
 	return (_execvpe(name, argv, environ));
 }
@@ -94,7 +94,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 int VROOT_API_NAME(execlp)(const char *name, const char *arg, ...)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s %s\n",__FUNCTION__, name, arg);
 
 	va_list ap;
 	const char **argv;
@@ -122,7 +122,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 int VROOT_API_NAME(execv)(const char *name, char * const *argv)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, name);
 
 	(void)_execve(name, argv, environ);
 	return (-1);
@@ -266,7 +266,7 @@ done:
 EXPORT
 int VROOT_API_NAME(execvP)(const char *name, const char *path, char * const argv[])
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s %s\n",__FUNCTION__, name, path);
 
 	return execvPe(name, path, argv, environ);
 }
@@ -289,7 +289,7 @@ EXPORT
 int VROOT_API_NAME(posix_spawnp)(pid_t * pid, const char * file, const posix_spawn_file_actions_t *file_actions,
     const posix_spawnattr_t * attrp, char *const argv[], char *const envp[])
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, file);
 
 	const char *env_path;
 	char *bp;

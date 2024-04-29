@@ -117,7 +117,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 int VROOT_API_NAME(lstat)(const char * path, struct stat *sb)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     int olderr = errno;
     const char* newpath = jbroot_alloc(path);
@@ -172,7 +172,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 int VROOT_API_NAME(lstatx_np)(const char *path, struct stat *sb, filesec_t fsec)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     const char* newpath = jbroot_alloc(path);
     int ret = lstatx_np(newpath, sb, fsec);
@@ -225,7 +225,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 int VROOT_API_NAME(fstatat)(int fd, const char *path, struct stat *sb, int flag)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d %s\n",__FUNCTION__, fd, path);
 
     const char* newpath = jbrootat_alloc(fd, path);
 
@@ -281,7 +281,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 ssize_t VROOTAT_API_NAME(readlinkat)(int fd,const char* path,char* buf,size_t bufsize)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d %s\n",__FUNCTION__, fd, path);
 
     const char* newpath = jbrootat_alloc(fd, path);
     
@@ -342,7 +342,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 ssize_t VROOT_API_NAME(readlink)(const char * path, char* buf, size_t bufsiz)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     return VROOT_API_NAME(readlinkat)(AT_FDCWD, path, buf, bufsiz);
 }
@@ -351,7 +351,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 EXPORT
 ssize_t VROOT_API_NAME(freadlink)(int fd, char* buf, size_t bufsize)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d\n",__FUNCTION__, fd);
 
     char mybuf[PATH_MAX]={0}; //the caller buf may be too small for real fs link
     ssize_t ret = freadlink(fd, mybuf, sizeof(mybuf)-1);

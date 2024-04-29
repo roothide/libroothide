@@ -42,8 +42,11 @@ int bootstrap()
     char jbrand[32]={0};
     snprintf(jbrand, sizeof(jbrand), "%016llX", randvalue);
 
+    char jbroot_standardized[PATH_MAX]={0};
+    snprintf(jbroot_standardized, sizeof(jbroot_standardized), "%s/%s%s", JB_ROOT_PARENT, JB_ROOT_PREFIX, jbrand);
+
     __roothideinit_JBRAND = strdup(jbrand);
-    __roothideinit_JBROOT = strdup(jbroot);
+    __roothideinit_JBROOT = strdup(jbroot_standardized);
 
     free(librealpath);
     return 0;

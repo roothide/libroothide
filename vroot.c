@@ -168,7 +168,7 @@ VROOT_LOG("@%s %d %08X %s\n",__FUNCTION__, fd, flags, path);
 
 int VROOT_API_NAME(open_dprotected_np)(const char *path, int flags, int class, int dpflags, ...)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     mode_t mode = 0;
     va_list ap;
@@ -183,7 +183,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(link)(const char *name1, const char *name2)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s : %s\n",__FUNCTION__, name1, name2);
 
     const char* newname1 = jbroot_alloc(name1);
     const char* newname2 = jbroot_alloc(name2);
@@ -195,7 +195,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(symlink)(const char *name1, const char *name2)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s : %s\n",__FUNCTION__, name1, name2);
 
     int ret = 0;
     const char* newname2 = jbroot_alloc(name2);
@@ -233,7 +233,7 @@ VROOT_LOG("@%s %s => %s\n",__FUNCTION__, __old, __new);
 
 int VROOTAT_API_NAME(linkat)(int fd1, const char *name1, int fd2, const char *name2, int flag)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d %s : %d %s\n",__FUNCTION__, fd1, name1, fd2, name2);
 
     /* flag is for name1 and only support AT_SYMLINK_FOLLOW, but its not about find path */
     const char* newname1 = jbrootat_alloc(fd1, name1, 0);
@@ -270,7 +270,7 @@ VROOT_LOG("@%s %s %d %s\n",__FUNCTION__, name1, fd, name2);
 
 int VROOT_API_NAME(shm_open)(const char * path, int flags, ...)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     mode_t mode = 0;
     va_list ap;
@@ -285,7 +285,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 sem_t* VROOT_API_NAME(sem_open)(const char *path, int flags, ...)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     mode_t mode = 0;
     va_list ap;
@@ -300,7 +300,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(copyfile)(const char * from, const char * to, copyfile_state_t state, copyfile_flags_t flags)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s : %s\n",__FUNCTION__, from, to);
 
     const char* newfrom = jbroot_alloc(from);
     const char* newto = jbroot_alloc(to);
@@ -312,7 +312,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOTAT_API_NAME(renameat)(int fromfd, const char *from, int tofd, const char *to)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d %s : %d %s\n",__FUNCTION__, fromfd, from, tofd, to);
 
     const char* newfrom = jbrootat_alloc(fromfd, from, 0);
     const char* newto = jbrootat_alloc(tofd, to, 0);
@@ -324,7 +324,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(renamex_np)(const char *__old, const char *__new, unsigned int flags)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s : %s\n",__FUNCTION__, __old, __new);
 
     const char* new__old = jbroot_alloc(__old);
     const char* new__new = jbroot_alloc(__new);
@@ -336,7 +336,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOTAT_API_NAME(renameatx_np)(int fromfd, const char *from, int tofd, const char *to, unsigned int flags)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d %s : %d %s\n",__FUNCTION__, fromfd, from, tofd, to);
 
     const char* newfrom = jbrootat_alloc(fromfd, from, flags);
     const char* newto = jbrootat_alloc(tofd, to, flags);
@@ -348,7 +348,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(exchangedata)(const char * path1,const char * path2,unsigned int options)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s : %s\n",__FUNCTION__, path1, path2);
 
     const char* newpath1 = jbroot_alloc(path1);
     const char* newpath2 = jbroot_alloc(path2);
@@ -360,7 +360,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 char* VROOT_API_NAME(realpath)(const char * path, char *resolved_path)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     char pathbuf[PATH_MAX]={0};
     const char* newpath = jbroot_alloc(path);
@@ -440,7 +440,7 @@ VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 #define F_GETCONFINED           96      /* is-fd-confined? */
 int VROOT_API_NAME(fcntl)(int fd, int cmd, ...)
 {
-VROOT_LOG("@%s %d\n",__FUNCTION__, cmd);
+VROOT_LOG("@%s %d %d\n",__FUNCTION__, fd, cmd);
 
     va_list ap;
     void *arg;
@@ -510,7 +510,7 @@ VROOT_LOG("@%s %d\n",__FUNCTION__, cmd);
 
 int VROOT_API_NAME(bind)(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d\n",__FUNCTION__, sockfd);
 
     struct sockaddr_un *addr_un = (struct sockaddr_un *)(addr);
     if (addr_un->sun_family == AF_UNIX && addr_un->sun_path[0]) {
@@ -544,7 +544,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(connect)(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d\n",__FUNCTION__, sockfd);
 
     struct sockaddr_un *addr_un = (struct sockaddr_un *)(addr);
     if (addr_un->sun_family == AF_UNIX && addr_un->sun_path[0]) {
@@ -579,7 +579,7 @@ VROOT_LOG("@%s %s : %s\n",__FUNCTION__, path, newpath);
 
 int VROOT_API_NAME(getpeername)(int sockfd, struct sockaddr *addr, socklen_t* addrlen)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d\n",__FUNCTION__, sockfd);
 
     socklen_t origlen = *addrlen;
     
@@ -604,7 +604,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 }
 int VROOT_API_NAME(getsockname)(int sockfd, struct sockaddr *addr, socklen_t* addrlen)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %d\n",__FUNCTION__, sockfd);
 
     socklen_t origlen = *addrlen;
     
@@ -664,7 +664,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(glob)(const char * pattern, int flags, int (* errfunc) (const char *, int), glob_t * pglob)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, pattern);
 
     int ret = glob(pattern,flags,errfunc,pglob);
     if(ret == 0) {
@@ -686,7 +686,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(glob_b)(const char * pattern, int flags, int (^ errfunc) (const char *, int), glob_t * pglob)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, pattern);
 
     int ret = glob_b(pattern,flags,errfunc,pglob);
     if(ret == 0) {
@@ -709,7 +709,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 int __thread (*ftw_callback)(const char *fpath, const struct stat *sb, int typeflag);
 int ftw_function(const char *fpath, const struct stat *sb, int typeflag)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, fpath);
 
     const char* newpath = rootfs_alloc(fpath);
     int ret = ftw_callback(newpath,sb,typeflag);
@@ -718,7 +718,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 }
 int VROOT_API_NAME(ftw)(const char *dirpath, int (*fn)(const char *fpath, const struct stat *sb, int typeflag), int nopenfd)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, dirpath);
 
     ftw_callback = fn;
     
@@ -731,7 +731,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 int __thread (*nftw_callback)(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf);
 int nftw_function(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, fpath);
 
     const char* newpath = rootfs_alloc(fpath);
     int ret = nftw_callback(newpath,sb,typeflag,ftwbuf);
@@ -741,7 +741,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 int VROOT_API_NAME(nftw)(const char *dirpath,
                           int (*fn)(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf), int nopenfd, int flags)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, dirpath);
 
     nftw_callback = fn;
     
@@ -861,7 +861,7 @@ VROOT_LOG("@%s\n",__FUNCTION__);
 
 int VROOT_API_NAME(rmdir)(const char * path)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %s\n",__FUNCTION__, path);
 
     const char* newpath = jbroot_alloc(path);
     

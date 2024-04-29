@@ -31,7 +31,7 @@ VROOT_LOG("@%s %s %x\n",__FUNCTION__, __path, __mode);
 EXPORT
 int VROOT_API_NAME(dladdr)(const void * addr, Dl_info * info)
 {
-VROOT_LOG("@%s\n",__FUNCTION__);
+VROOT_LOG("@%s %p\n",__FUNCTION__, addr);
 
     int ret = dladdr(addr, info);
     if(ret != 0 && !_dyld_shared_cache_contains_path(info->dli_fname))
