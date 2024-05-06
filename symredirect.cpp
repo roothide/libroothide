@@ -509,7 +509,7 @@ int processTarget(int fd, void* slice)
 
             case LC_CODE_SIGNATURE:
                 code_sign = (struct linkedit_data_command*)lc;
-                break;    
+                break;
         }
         
         /////////
@@ -638,7 +638,7 @@ int processTarget(int fd, void* slice)
                 return -1;
         }
     }
-
+    
     if(dyld_info)
     {
         assert(dyld_info->bind_off != 0); //follow dyld
@@ -646,7 +646,7 @@ int processTarget(int fd, void* slice)
         struct stat st;
         assert(fstat(fd, &st)==0);
         assert(st.st_size == (linkedit_seg->fileoff+linkedit_seg->filesize));
-
+        
         size_t newfsize = st.st_size;
 
         if(dyld_info->bind_off && dyld_info->bind_size)
@@ -656,7 +656,7 @@ int processTarget(int fd, void* slice)
             void* data = (void*)((uint64_t)header + dyld_info->bind_off);
             void* newbind = rebind(shimOrdinal, header, bindtype_bind, data, &size);
             LOG("new bind=%p size=%x\n", newbind, size);
-            if(newbind) 
+            if(newbind)
             {
                 assert(g_slice_index==0);
 
@@ -687,7 +687,7 @@ int processTarget(int fd, void* slice)
             void* data = (void*)((uint64_t)header + dyld_info->lazy_bind_off);
             void* newbind = rebind(shimOrdinal,header, bindtype_lazy, data, &size);
             LOG("new lazy bind=%p size=%x\n", newbind, size);
-            if(newbind) 
+            if(newbind)
             {
                 assert(g_slice_index==0);
 
@@ -707,7 +707,9 @@ int processTarget(int fd, void* slice)
         {
             // some machos has padding data in the end
             // assert(st.st_size == (code_sign->dataoff+code_sign->datasize));
-
+            
+            assert(g_slice_index==0);
+            
             void* data = (void*)((uint64_t)header + code_sign->dataoff);
             size_t size = code_sign->datasize;
             assert(lseek(fd, 0, SEEK_END)==newfsize);
@@ -715,7 +717,7 @@ int processTarget(int fd, void* slice)
             code_sign->dataoff = newfsize;
             linkedit_seg->filesize += size;
             linkedit_seg->vmsize += size;
-            newfsize += size; 
+            newfsize += size;
         }
 
         // for(int i=0; i<(newfsize%0x10); i++) {
@@ -726,7 +728,7 @@ int processTarget(int fd, void* slice)
 
         linkedit_seg->vmsize = round_page(linkedit_seg->vmsize);
     }
-
+    
     return 0;
 }
 
@@ -746,7 +748,7 @@ int processMachO(const char* file, int (*process)(int,void*))
     
     LOG("file size = %lld\n", st.st_size);
     
-    void* macho = mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    void* macho = mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, 0);
     if(macho == MAP_FAILED) {
         fprintf(stderr, "map %s error:%d,%s\n", file, errno, strerror(errno));
         return -1;
@@ -775,9 +777,16 @@ int processMachO(const char* file, int (*process)(int,void*))
             g_slice_index++;
         }
     } else if(magic == MH_MAGIC_64) {
-        return process(fd, (void*)macho);
+        if(process(fd, (void*)macho) < 0)
+            return -1;
     } else {
         fprintf(stderr, "unknown magic: %08x\n", magic);
+        return -1;
+    }
+    
+    assert(lseek(fd, 0, SEEK_SET) == 0);
+    if(write(fd, macho, st.st_size) != st.st_size) {
+        fprintf(stderr, "write %lld error:%d,%s\n", st.st_size, errno, strerror(errno));
         return -1;
     }
     
@@ -786,6 +795,7 @@ int processMachO(const char* file, int (*process)(int,void*))
 
     close(fd);
     
+    printf("finished.\n\n");
     return 0;
 }
 
