@@ -326,6 +326,13 @@ VROOT_API_WRAP(acl_t, acl_get_link_np, (const char *path_p, acl_type_t type), (n
 VROOT_API_WRAP(int, acl_set_file, (const char *path_p, acl_type_t type, acl_t acl), (newpath,type,acl), path_p)
 VROOT_API_WRAP(int, acl_set_link_np, (const char *path_p, acl_type_t type, acl_t acl), (newpath,type,acl), path_p)
 
+/* nl_types.h */
+VROOT_API_WRAP(nl_catd, catopen, (char *name, int flag), (newpath,flag), name)
+
+/* unicode/urename.h */
+//includes u_catopen, ures_open*, But this seems to be Apple's private library\
+ and procursus also provides libicu so we won't deal with it for now
+
 #ifndef VROOT_INTERNAL
 MACRO_endif /* VROOT_H */
 #endif

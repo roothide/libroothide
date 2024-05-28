@@ -29,6 +29,7 @@
 #include <libgen.h>
 #include <sys/acl.h>
 #include <util.h>
+#include <nl_types.h>
 
 #include "roothide.h"
 #include "common.h"
