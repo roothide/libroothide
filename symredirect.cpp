@@ -641,7 +641,8 @@ int processTarget(int fd, void* slice)
     
     if(dyld_info)
     {
-        assert(dyld_info->bind_off != 0); //follow dyld
+        // some machos only have export_offset, eg: padlock.dylib
+        // assert(dyld_info->bind_off != 0); //follow dyld
 
         struct stat st;
         assert(fstat(fd, &st)==0);
