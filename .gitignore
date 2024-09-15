@@ -2,6 +2,7 @@
 .theos
 packages
 devkit
+*.o
 *.zip
 *.tbd
 *.dylib

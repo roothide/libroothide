@@ -10,18 +10,24 @@
 #include <mach-o/nlist.h>
 #include <mach-o/loader.h>
 #include <mach-o/fixup-chains.h>
-#include <mach/vm_page_size.h>
 #include <assert.h>
 #include <libgen.h>
+
+#define MACHO_VM_PAGE_SIZE  0x4000
+#define MACHO_VM_PAGE_MASK  (MACHO_VM_PAGE_SIZE-1)
+
+#define trunc_page(x)   ((x) & (~MACHO_VM_PAGE_MASK))
+#define round_page(x)   trunc_page((x) + MACHO_VM_PAGE_MASK)
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 
 
-#define LOG(...)    printf(__VA_ARGS__)
+#define LOG(...)    //printf(__VA_ARGS__)
 
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #define VROOT_SYMBOLE(NAME) "_"#NAME,
 
@@ -31,7 +37,7 @@
 #define VROOTAT_API_WRAP(RET,NAME,ARGTYPES,ARGS,FD,PATHARG,ATFLAG) VROOT_SYMBOLE(NAME)
 
 std::vector<std::string> g_shim_apis = {
-#define VROOT_API_LIST
+#define VROOT_API_ALL
 #define VROOT_INTERNAL
 #include "vroot.h"
 };
@@ -760,9 +766,9 @@ int processMachO(const char* file, int (*process)(int,void*))
     if(magic==FAT_MAGIC || magic==FAT_CIGAM) {
         struct fat_header* fathdr = (struct fat_header*)macho;
         struct fat_arch* archdr = (struct fat_arch*)((uint64_t)fathdr + sizeof(*fathdr));
-        int count = magic==FAT_MAGIC ? fathdr->nfat_arch : NXSwapInt(fathdr->nfat_arch);
+        int count = magic==FAT_MAGIC ? fathdr->nfat_arch : __builtin_bswap32(fathdr->nfat_arch);
         for(int i=0; i<count; i++) {
-            uint32_t offset = magic==FAT_MAGIC ? archdr[i].offset : NXSwapInt(archdr[i].offset);
+            uint32_t offset = magic==FAT_MAGIC ? archdr[i].offset : __builtin_bswap32(archdr[i].offset);
             if(process(fd, (void*)((uint64_t)macho + offset)) < 0)
                return -1;
             g_slice_index++;
@@ -770,9 +776,9 @@ int processMachO(const char* file, int (*process)(int,void*))
     } else if(magic==FAT_MAGIC_64 || magic==FAT_CIGAM_64) {
         struct fat_header* fathdr = (struct fat_header*)macho;
         struct fat_arch_64* archdr = (struct fat_arch_64*)((uint64_t)fathdr + sizeof(*fathdr));
-        int count = magic==FAT_MAGIC_64 ? fathdr->nfat_arch : NXSwapInt(fathdr->nfat_arch);
+        int count = magic==FAT_MAGIC_64 ? fathdr->nfat_arch : __builtin_bswap32(fathdr->nfat_arch);
         for(int i=0; i<count; i++) {
-            uint64_t offset = magic==FAT_MAGIC_64 ? archdr[i].offset : NXSwapLongLong(archdr[i].offset);
+            uint64_t offset = magic==FAT_MAGIC_64 ? archdr[i].offset : __builtin_bswap64(archdr[i].offset);
             if(process(fd, (void*)((uint64_t)macho + offset)) < 0)
                 return -1;
             g_slice_index++;
@@ -795,25 +801,25 @@ int processMachO(const char* file, int (*process)(int,void*))
     munmap(macho, st.st_size);
 
     close(fd);
-    
-    printf("finished.\n\n");
+
     return 0;
 }
 
 int main(int argc, const char * argv[])
 {
     if(argc != 2) {
-        printf("Usage: %s [target]\n", getprogname());
+        printf("Usage: %s [target]\n", basename((char*)argv[0]));
         return 0;
     }
     
     const char* target = argv[1];
-    printf("***symredirect %s\n", target);
+    printf("symredirect %s\n", target);
     printf("vroot api count = %d\n", g_shim_apis.size());
     if(processMachO(target, processTarget) < 0) {
         fprintf(stderr, "processTarget error!\n");
         return -1;
     }
+    printf("finished.\n\n");
 
     return 0;
 }

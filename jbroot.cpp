@@ -1,5 +1,6 @@
-#include "roothide.h"
+#include <stdlib.h>
 #include "common.h"
+#include "roothide.h"
 
 EXPORT
 std::string jbroot(std::string path)

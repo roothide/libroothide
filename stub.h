@@ -1,7 +1,7 @@
 #ifndef ROOTHIDE_H
 #define ROOTHIDE_H
 
-#pragma message("roothide disabled, using stub functions...")
+#pragma message("not building for roothide, fall back to stub functions...")
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

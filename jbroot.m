@@ -1,5 +1,6 @@
-#include "roothide.h"
+#include <stdlib.h>
 #include "common.h"
+#include "roothide.h"
 
 EXPORT
 NSString* __attribute__((overloadable)) jbroot(NSString* path)

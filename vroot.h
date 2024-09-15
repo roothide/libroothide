@@ -28,6 +28,10 @@ MACRO_define VROOT_H
 
 #include <Availability.h>
 
+#ifndef __IPHONE_16_0
+#error "ios sdk version too old"
+#endif
+
 /* dlfcn.h */
 VROOT_API_DEF(void*, dlsym, (void * __handle, const char * __symbol))
 
@@ -182,7 +186,7 @@ VROOT_API_WRAP(int, stat, (const char *path, struct stat *sb), (newpath,sb), pat
 VROOTAT_API_WRAP(int, fchmodat, (int fd, const char *path, mode_t mode, int flag), (fd,newpath,mode,flag), fd, path, flag)
 VROOTAT_API_DEF(int, fstatat, (int fd, const char *path, struct stat *sb, int flag) )
 VROOTAT_API_WRAP(int, mkdirat, (int fd, const char * path, mode_t mode), (fd,newpath,mode), fd, path, 0)
-#if defined(VROOT_API_LIST) || (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0)
+#if defined(VROOT_API_ALL) || __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0
 VROOTAT_API_WRAP(int, mkfifoat, (int fd, const char * path, mode_t mode), (fd,newpath,mode), fd, path, 0)
 VROOTAT_API_WRAP(int, mknodat, (int fd, const char *path, mode_t mode, dev_t dev), (fd,newpath,mode,dev), fd, path, 0)
 #endif
@@ -192,6 +196,7 @@ VROOTAT_API_WRAP(int, utimensat, (int fd, const char *path, const struct timespe
 //file-cmds/chmod.c->modify_file_acl? but its from apple opensource probject, this shim library is just for gnu opensource project
 VROOT_API_WRAP(int, chmodx_np, (const char *path, filesec_t fsec), (newpath,fsec), path)
 
+VROOT_API_WRAP(int, chflags, (const char *path, __uint32_t flags), (newpath,flags), path)
 VROOT_API_WRAP(int, lchflags, (const char *path, __uint32_t flags), (newpath,flags), path)
 VROOT_API_WRAP(int, lchmod, (const char *path, mode_t mode), (newpath,mode), path)
 VROOT_API_DEF(int, lstatx_np, (const char *path, struct stat *st, filesec_t fsec) )
@@ -215,7 +220,7 @@ VROOTAT_API_WRAP(int,getattrlistat,(int fd,const char* path, struct attrlist * a
 
 VROOTAT_API_WRAP(int,setattrlistat,(int fd,const char* path, struct attrlist * attrList, void * attrBuf,
                                   size_t attrBufSize, unsigned int options), (fd,newpath,attrList,attrBuf,attrBufSize,options), fd,path,0)
-#if defined(VROOT_API_LIST) || (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0)
+#if defined(VROOT_API_ALL) || __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_16_0
 VROOT_API_DEF(ssize_t, freadlink, (int fd, char* buf, size_t bufsize))
 #endif
 
@@ -332,6 +337,10 @@ VROOT_API_WRAP(nl_catd, catopen, (char *name, int flag), (newpath,flag), name)
 /* unicode/urename.h */
 //includes u_catopen, ures_open*, But this seems to be Apple's private library\
  and procursus also provides libicu so we won't deal with it for now
+
+/* libxml/xxx */
+//procursus provides libxml so we won't deal with it for now
+
 
 #ifndef VROOT_INTERNAL
 MACRO_endif /* VROOT_H */
