@@ -28,7 +28,7 @@ MACRO_define VROOT_H
 
 #include <Availability.h>
 
-#ifndef __IPHONE_16_0
+#if !defined(VROOT_API_ALL) && !defined(__IPHONE_16_0)
 #error "ios sdk version too old"
 #endif
 
@@ -121,7 +121,7 @@ VROOT_API_WRAP(int, sync_volume_np, (const char *path, int flags), (newpath,flag
 VROOT_API_WRAP(int, mkpath_np, (const char *path, mode_t omode), (newpath,omode), path)
 VROOTAT_API_WRAP(int, mkpathat_np, (int dfd, const char *path, mode_t omode), (dfd, newpath, omode), dfd,path,0)
 
-#ifdef TARGET_OS_IPHONE
+#if defined(VROOT_API_ALL) || defined(TARGET_OS_IPHONE)
 VROOT_API_DEF(int, mkstemp_dprotected_np, (char *path, int dpclass, int dpflags))
 #endif
 VROOTAT_API_DEF(char*, mkdtempat_np, (int dfd, char *path))

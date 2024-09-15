@@ -13,7 +13,7 @@ if [ ! -d ./ld64/EXTERNAL_HEADERS/non-darwin ]; then
 fi
 
 echo "*** Building the symredirect-host executable ..."
-clang++ -v -std=c++11 -I./ld64/EXTERNAL_HEADERS/non-darwin -o symredirect-host symredirect.cpp
+clang++ -v -std=c++11 -I./ld64/EXTERNAL_HEADERS/non-darwin -DVROOT_API_ALL -o symredirect-host symredirect.cpp
 
 echo "*** Checking built symredirect-host executable ..."
 
