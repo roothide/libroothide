@@ -26,4 +26,5 @@ chmod +x ./symredirect-host
 ./symredirect-host
 
 echo "*** Installing symredirect-host to /usr/local/bin/symredirect ..."
+sudo rm -f /usr/local/bin/symredirect #clear signature cache
 sudo cp symredirect-host /usr/local/bin/symredirect

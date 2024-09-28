@@ -13,3 +13,4 @@ rootfs
 symredirect
 updatelink
 Makefile.theos
+symredirect-host

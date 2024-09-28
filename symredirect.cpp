@@ -411,15 +411,33 @@ void* rebind(int shimOrdinal, struct mach_header_64* header, enum bindtype type,
     return NULL;
 }
 
-int processTarget(int fd, void* slice)
+int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
 {
     uint32_t magic = *(uint32_t*)slice;
-    if(magic != MH_MAGIC_64) {
-        fprintf(stderr, "unsupport mach-o: %08x\n", magic);
-        return -1;
+
+    switch(magic)
+    {
+        case MH_MAGIC:
+            fprintf(stderr, "ignore 32bit mach-o: %p\n", slice);
+            return 0;
+
+        case MH_MAGIC_64:
+            break;
+
+        default:
+            fprintf(stderr, "unsupport mach-o: %08x\n", magic);
+            return -1;
     }
     
     struct mach_header_64* header = (struct mach_header_64*)slice;
+
+    switch(header->cputype) {
+        case CPU_TYPE_ARM64:
+            break;
+        default:
+            fprintf(stderr, "ignore unsupport cpu type: %08x\n", header->cputype);
+            return 0;
+    }
     
     if((header->flags & MH_TWOLEVEL) == 0) {
         printf("mach-o has no MH_TWOLEVEL\n");
@@ -652,7 +670,7 @@ int processTarget(int fd, void* slice)
 
         struct stat st;
         assert(fstat(fd, &st)==0);
-        assert(st.st_size == (linkedit_seg->fileoff+linkedit_seg->filesize));
+        assert(slice_size == (linkedit_seg->fileoff+linkedit_seg->filesize));
         
         size_t newfsize = st.st_size;
 
@@ -712,8 +730,8 @@ int processTarget(int fd, void* slice)
 
         if(code_sign && newfsize!=st.st_size)
         {
-            // some machos has padding data in the end
-            // assert(st.st_size == (code_sign->dataoff+code_sign->datasize));
+            // some machos have padding data in the end
+            // assert(slice_size == (code_sign->dataoff+code_sign->datasize));
             
             assert(g_slice_index==0);
             
@@ -739,7 +757,7 @@ int processTarget(int fd, void* slice)
     return 0;
 }
 
-int processMachO(const char* file, int (*process)(int,void*))
+int processMachO(const char* file, int (*process)(int,uint64_t,size_t,void*))
 {
     int fd = open(file, O_RDWR);
     if(fd < 0) {
@@ -769,7 +787,8 @@ int processMachO(const char* file, int (*process)(int,void*))
         int count = magic==FAT_MAGIC ? fathdr->nfat_arch : __builtin_bswap32(fathdr->nfat_arch);
         for(int i=0; i<count; i++) {
             uint32_t offset = magic==FAT_MAGIC ? archdr[i].offset : __builtin_bswap32(archdr[i].offset);
-            if(process(fd, (void*)((uint64_t)macho + offset)) < 0)
+            uint64_t size = magic==FAT_MAGIC ? archdr[i].size : __builtin_bswap64(archdr[i].size);
+            if(process(fd, offset, size, (void*)((uint64_t)macho + offset)) < 0)
                return -1;
             g_slice_index++;
         }
@@ -779,13 +798,15 @@ int processMachO(const char* file, int (*process)(int,void*))
         int count = magic==FAT_MAGIC_64 ? fathdr->nfat_arch : __builtin_bswap32(fathdr->nfat_arch);
         for(int i=0; i<count; i++) {
             uint64_t offset = magic==FAT_MAGIC_64 ? archdr[i].offset : __builtin_bswap64(archdr[i].offset);
-            if(process(fd, (void*)((uint64_t)macho + offset)) < 0)
+            uint64_t size = magic==FAT_MAGIC_64 ? archdr[i].size : __builtin_bswap64(archdr[i].size);
+            if(process(fd, offset, size, (void*)((uint64_t)macho + offset)) < 0)
                 return -1;
             g_slice_index++;
         }
     } else if(magic == MH_MAGIC_64) {
-        if(process(fd, (void*)macho) < 0)
+        if(process(fd, 0, st.st_size, (void*)macho) < 0)
             return -1;
+        g_slice_index++;
     } else {
         fprintf(stderr, "unknown magic: %08x\n", magic);
         return -1;
@@ -808,7 +829,7 @@ int processMachO(const char* file, int (*process)(int,void*))
 int main(int argc, const char * argv[])
 {
     if(argc != 2) {
-        printf("Usage: %s [target]\n", basename((char*)argv[0]));
+        printf("Usage: %s /path/to/mach-o\n", basename((char*)argv[0]));
         return 0;
     }
     
@@ -817,6 +838,10 @@ int main(int argc, const char * argv[])
     printf("vroot api count = %d\n", g_shim_apis.size());
     if(processMachO(target, processTarget) < 0) {
         fprintf(stderr, "processTarget error!\n");
+        return -1;
+    }
+    if(g_slice_index == 0) {
+        fprintf(stderr, "no mach-o slice processed!\n");
         return -1;
     }
     printf("finished.\n\n");
