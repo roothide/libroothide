@@ -425,7 +425,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
             break;
 
         default:
-            fprintf(stderr, "unsupport mach-o: %08x\n", magic);
+            fprintf(stderr, "unsupported mach-o: %08x\n", magic);
             return -1;
     }
     
@@ -435,8 +435,19 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
         case CPU_TYPE_ARM64:
             break;
         default:
-            fprintf(stderr, "ignore unsupport cpu type: %08x\n", header->cputype);
+            fprintf(stderr, "ignore unsupported cpu type: %08x\n", header->cputype);
             return 0;
+    }
+
+    switch(header->filetype) {
+            case MH_DYLIB:
+            case MH_BUNDLE:
+            case MH_EXECUTE:
+                break;
+
+            default:
+                fprintf(stderr, "ignore unsupported file type: %08x\n", header->filetype);
+                return 0;
     }
     
     if((header->flags & MH_TWOLEVEL) == 0) {
