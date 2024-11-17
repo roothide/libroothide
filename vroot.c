@@ -257,7 +257,7 @@ VROOT_LOG("@%s %s %d %s\n",__FUNCTION__, name1, fd, name2);
     if(dfd >= 0)
     {
         const char* newname1 = jbrootat_alloc(dfd, name1, 0);
-        int ret = symlinkat(newname1, fd, newname2);
+        ret = symlinkat(newname1, fd, newname2);
         if(newname1) free((void*)newname1);
         
         close(dfd);
