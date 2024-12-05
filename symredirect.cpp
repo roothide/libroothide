@@ -227,7 +227,7 @@ void* rebind(int shimOrdinal, struct mach_header_64* header, enum bindtype type,
     uint8_t*  end  = (uint8_t*)((uint64_t)data + *size);
     const char*     symbolName = NULL;
     int             libraryOrdinal = 0;
-    bool            libraryOrdinalSet = false;
+    bool            libraryOrdinalSet = (type==bindtype_weak ? true : false);
     bool            weakImport = false;
     bool stop=false;
     int i=0;
@@ -300,6 +300,7 @@ void* rebind(int shimOrdinal, struct mach_header_64* header, enum bindtype type,
             case BIND_OPCODE_SET_SYMBOL_TRAILING_FLAGS_IMM:
             {
                 ++i;
+                // weakImport is allowed to be missed, will bind to NULL in dyld
                 weakImport = ( (immediate & BIND_SYMBOL_FLAGS_WEAK_IMPORT) != 0 );
                 symbolName = (char*)p;
                 while (*p != '\0')
@@ -323,7 +324,15 @@ void* rebind(int shimOrdinal, struct mach_header_64* header, enum bindtype type,
 
             case BIND_OPCODE_DO_BIND:
             {
-                if(processSymbol(header, libraryOrdinal, symbolName)) 
+                assert(libraryOrdinalSet==true);
+
+                bool shim = true;
+
+                // ignore self-binding in weak table
+                if(type==bindtype_weak && libraryOrdinal==BIND_SPECIAL_DYLIB_SELF)
+                    shim = false;
+
+                if(shim && processSymbol(header, libraryOrdinal, symbolName)) 
                 {
                     if(resized) rebuilt=true;
                     resized = false;
@@ -592,12 +601,28 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
             uint16_t n_desc = symbols64[i].n_desc;
             uint8_t  n_type = symbols64[i].n_type;
             
-            int ordinal= GET_LIBRARY_ORDINAL(n_desc);
-            //assert(ordinal > 0); ordinal=0:BIND_SPECIAL_DYLIB_SELF
+            //libOrdinalFromDesc
+            int ordinal = GET_LIBRARY_ORDINAL(n_desc);
+            switch ( ordinal ) {
+                case SELF_LIBRARY_ORDINAL:
+                    ordinal = BIND_SPECIAL_DYLIB_SELF;
+                    break;
+
+                case DYNAMIC_LOOKUP_ORDINAL:
+                    ordinal = BIND_SPECIAL_DYLIB_FLAT_LOOKUP;
+                    break;
+
+                case EXECUTABLE_ORDINAL:
+                    ordinal = BIND_SPECIAL_DYLIB_MAIN_EXECUTABLE;
+                    break;
+            }
             
             // Handle defined weak def symbols which need to get a special ordinal
             if ( ((n_type & N_TYPE) == N_SECT) && ((n_type & N_EXT) != 0) && ((n_desc & N_WEAK_DEF) != 0) )
                 ordinal = BIND_SPECIAL_DYLIB_WEAK_LOOKUP;
+
+            // ignore self-binding? But self-binding symbols should not appear in undefsym
+            // if(ordinal==BIND_SPECIAL_DYLIB_SELF) continue;
             
             if(processSymbol(header, ordinal, symstr))
                SET_LIBRARY_ORDINAL(symbols64[i].n_desc, shimOrdinal);
