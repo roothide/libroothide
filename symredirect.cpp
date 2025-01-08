@@ -808,8 +808,13 @@ int processMachO(const char* file, int (*process)(int,uint64_t,size_t,void*))
     }
     
     LOG("file size = %lld\n", st.st_size);
-    
-    void* macho = mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, 0);
+
+    int mapflag = MAP_PRIVATE;
+#ifdef MAP_RESILIENT_CODESIGN
+    /* MAP_RESILIENT_CODESIGN only works with MAP_PRIVATE+(PROT_READ[|PROT_WRITE]) or MAP_SHARED+PROT_READ */
+    mapflag |= MAP_RESILIENT_CODESIGN;
+#endif
+    void* macho = mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, mapflag, fd, 0);
     if(macho == MAP_FAILED) {
         fprintf(stderr, "map %s error:%d,%s\n", file, errno, strerror(errno));
         return -1;

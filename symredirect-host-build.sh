@@ -19,6 +19,17 @@ fi
 echo "*** Building the symredirect-host executable ..."
 clang++ -v -std=c++11 $EXTRA_HEADER_FLAG -o symredirect-host symredirect.cpp
 
+if [ $(uname -s) = "Darwin" ] && [ "$(sw_vers -productName)" != "macOS" ]; then
+    echo "*** Signing the symredirect-host with entitlements ..."
+    ldid -S./entitlements.plist ./symredirect-host
+
+    if [ -f /basebin/fastPathSign ]; then
+        echo "*** Signing the symredirect-host with fastPathSign ..."
+        ldid -M -S/basebin/bootstrap.entitlements ./symredirect-host
+        /basebin/fastPathSign ./symredirect-host
+    fi
+fi
+
 echo "*** Checking built symredirect-host executable ..."
 
 chmod +x ./symredirect-host
@@ -27,4 +38,5 @@ chmod +x ./symredirect-host
 
 echo "*** Installing symredirect-host to /usr/local/bin/symredirect ..."
 sudo rm -f /usr/local/bin/symredirect #clear signature cache
+[ -d /usr/local/bin ] || sudo mkdir -p /usr/local/bin
 sudo cp symredirect-host /usr/local/bin/symredirect
