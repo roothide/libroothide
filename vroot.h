@@ -341,6 +341,9 @@ VROOT_API_WRAP(nl_catd, catopen, (char *name, int flag), (newpath,flag), name)
 /* libxml/xxx */
 //procursus provides libxml so we won't deal with it for now
 
+/* "notify_private.h" */
+VROOT_API_WRAP(uint32_t, notify_dump_status, (const char *filepath), (newpath), filepath)
+
 
 #ifndef VROOT_INTERNAL
 MACRO_endif /* VROOT_H */

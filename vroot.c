@@ -86,6 +86,8 @@ struct statfs64 __DARWIN_STRUCT_STATFS64;
 int statfs64(const char *, struct statfs64 *);
 int getfsstat64(struct statfs64 *, int, int);
 
+uint32_t notify_dump_status(const char *filepath);
+
 //c++
 void* _ZNSt3__113basic_filebufIcNS_11char_traitsIcEEE4openEPKcj(void* thiz, const char* __s, unsigned int mode);
 void* _ZNSt3__114basic_ifstreamIcNS_11char_traitsIcEEE4openEPKcj(void* thiz, const char* __s, unsigned int mode);
