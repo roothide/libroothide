@@ -43,6 +43,8 @@ std::vector<std::string> g_shim_apis = {
 };
 
 int g_slice_index = 0;
+int g_processed_count = 0;
+int g_redirected_count = 0;
 
 const char* g_shim_install_name = "@loader_path/.jbroot/usr/lib/libvrootapi.dylib";
 
@@ -76,6 +78,7 @@ char* getLibraryByOrdinal(struct mach_header_64* header, int ordinal)
 
 bool processSymbol(struct mach_header_64* header, int ordinal, const char* symbol)
 {
+    g_processed_count++;
     char* library = getLibraryByOrdinal(header, ordinal);
     LOG("import %s from %x:%s\n", symbol, ordinal, library);
     
@@ -100,6 +103,7 @@ bool processSymbol(struct mach_header_64* header, int ordinal, const char* symbo
                 abort();
             }
             
+            g_redirected_count++;
             return true;
         }
     }
@@ -867,6 +871,60 @@ int processMachO(const char* file, int (*process)(int,uint64_t,size_t,void*))
     return 0;
 }
 
+static int copy_file(const char *source, const char *destination, bool replace = false)
+{
+    int input = open(source, O_RDONLY);
+    if(input < 0) return -1;
+
+    if(replace && unlink(destination) < 0 && errno != ENOENT) {
+        int saved = errno;
+        close(input);
+        errno = saved;
+        return -1;
+    }
+
+    int flags = O_WRONLY | O_CREAT | O_TRUNC;
+    if(replace) flags |= O_EXCL;
+    int output = open(destination, flags, 0600);
+    if(output < 0) {
+        int saved = errno;
+        close(input);
+        errno = saved;
+        return -1;
+    }
+
+    int result = 0;
+    char buffer[65536];
+    for(;;) {
+        ssize_t count = read(input, buffer, sizeof(buffer));
+        if(count < 0) {
+            if(errno == EINTR) continue;
+            result = -1;
+            break;
+        }
+        if(count == 0) break;
+
+        ssize_t offset = 0;
+        while(offset < count) {
+            ssize_t written = write(output, buffer + offset, count - offset);
+            if(written < 0 && errno == EINTR) continue;
+            if(written <= 0) {
+                if(written == 0) errno = EIO;
+                result = -1;
+                break;
+            }
+            offset += written;
+        }
+        if(result < 0) break;
+    }
+
+    int saved = errno;
+    close(input);
+    if(close(output) < 0 && result == 0) return -1;
+    errno = saved;
+    return result;
+}
+
 int main(int argc, const char * argv[])
 {
     if(argc != 2) {
@@ -875,17 +933,49 @@ int main(int argc, const char * argv[])
     }
     
     const char* target = argv[1];
+    char resolved[PATH_MAX];
+    struct stat st;
+    if(!realpath(target, resolved) || stat(resolved, &st) < 0) {
+        perror("symredirect: resolve/stat target");
+        return -1;
+    }
+
+    char temp[] = "/tmp/symredirect.XXXXXX";
+    int fd = mkstemp(temp);
+    if(fd < 0) {
+        perror("symredirect: mkstemp");
+        return -1;
+    }
+    close(fd);
+
+    struct TempCleanup {
+        const char *path;
+        ~TempCleanup() { if(path) unlink(path); }
+    } cleanup{temp};
+
+    if(copy_file(resolved, temp) < 0) {
+        perror("symredirect: copy_file");
+        return -1;
+    }
+
     printf("symredirect %s\n", target);
-    printf("vroot api count = %d\n", g_shim_apis.size());
-    if(processMachO(target, processTarget) < 0) {
-        fprintf(stderr, "processTarget error!\n");
+    if(processMachO(temp, processTarget) < 0) {
+        fprintf(stderr, "symredirect: processTarget error!\n");
         return -1;
     }
     if(g_slice_index == 0) {
-        fprintf(stderr, "no mach-o slice processed!\n");
+        fprintf(stderr, "symredirect: no mach-o slice processed!\n");
         return -1;
     }
-    printf("finished.\n\n");
+
+    if(copy_file(temp, resolved, true) < 0 || chmod(resolved, st.st_mode & 0777) < 0) {
+        cleanup.path = nullptr;
+        perror("symredirect: replace target");
+        return -1;
+    }
+
+    printf("symredirect finished (vroot api count = %zu, processed symbol = %zu, redirected symbol = %d).\n\n",
+         g_shim_apis.size(), g_processed_count, g_redirected_count);
 
     return 0;
 }
