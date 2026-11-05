@@ -768,21 +768,33 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
             }
         }
 
-        if(code_sign && newfsize!=st.st_size)
+        if(newfsize != st.st_size)
         {
-            // some machos have padding data in the end
-            // assert(slice_size == (code_sign->dataoff+code_sign->datasize));
-            
             assert(g_slice_index==0);
-            
-            void* data = (void*)((uint64_t)header + code_sign->dataoff);
-            size_t size = code_sign->datasize;
-            assert(lseek(fd, 0, SEEK_END)==newfsize);
-            assert(write(fd, data, size)==size);
-            code_sign->dataoff = newfsize;
-            linkedit_seg->filesize += size;
-            linkedit_seg->vmsize += size;
-            newfsize += size;
+
+            if(symtab)
+            {
+                void* data = (void*)((uint64_t)header + symtab->stroff);
+                uint32_t size = symtab->strsize;
+                assert(lseek(fd, 0, SEEK_END)==newfsize);
+                assert(write(fd, data, size)==size);
+                symtab->stroff = newfsize;
+                linkedit_seg->filesize += size;
+                linkedit_seg->vmsize += size;
+                newfsize += size;
+            }
+
+            if(code_sign)
+            {
+                void* data = (void*)((uint64_t)header + code_sign->dataoff);
+                size_t size = code_sign->datasize;
+                assert(lseek(fd, 0, SEEK_END)==newfsize);
+                assert(write(fd, data, size)==size);
+                code_sign->dataoff = newfsize;
+                linkedit_seg->filesize += size;
+                linkedit_seg->vmsize += size;
+                newfsize += size;
+            }
         }
 
         // for(int i=0; i<(newfsize%0x10); i++) {
