@@ -1,3 +1,5 @@
+/* NOTE: this source file needs to be compatible with Linux/FreeBSD builds. */
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,7 +89,7 @@ bool processSymbol(struct mach_header_64* header, int ordinal, const char* symbo
         LOG("shim => %s\n", symbol);
         
         if(!library) {
-            fprintf(stderr, "unexplicit shim symbol %s @ %x!\n", symbol, ordinal);
+            fprintf(stderr, "symredirect: unexplicit shim symbol %s @ %x!\n", symbol, ordinal);
             abort();
         }
         
@@ -95,11 +97,11 @@ bool processSymbol(struct mach_header_64* header, int ordinal, const char* symbo
         if(strstr(library,"/usr/lib/")==library || strstr(library,"/System/")==library) {
 
             if((header->flags & MH_TWOLEVEL) == 0) {
-                fprintf(stderr, "mach-o has no MH_TWOLEVEL\n");
+                fprintf(stderr, "symredirect: mach-o has no MH_TWOLEVEL\n");
                 abort();
             }
             if((header->flags & MH_FORCE_FLAT) != 0) {
-                fprintf(stderr, "mach-o has MH_FORCE_FLAT\n");
+                fprintf(stderr, "symredirect: mach-o has MH_FORCE_FLAT\n");
                 abort();
             }
             
@@ -332,7 +334,7 @@ void* rebind(int shimOrdinal, struct mach_header_64* header, enum bindtype type,
 
                 bool shim = true;
 
-                // ignore self-binding in weak table
+                // skip self-binding in weak table
                 if(type==bindtype_weak && libraryOrdinal==BIND_SPECIAL_DYLIB_SELF)
                     shim = false;
 
@@ -431,14 +433,14 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
     switch(magic)
     {
         case MH_MAGIC:
-            fprintf(stderr, "ignore 32bit mach-o: %p\n", slice);
+            fprintf(stderr, "symredirect: skip 32bit mach-o: %p\n", slice);
             return 0;
 
         case MH_MAGIC_64:
             break;
 
         default:
-            fprintf(stderr, "unsupported mach-o: %08x\n", magic);
+            fprintf(stderr, "symredirect: unsupported mach-o: %08x\n", magic);
             return -1;
     }
     
@@ -448,7 +450,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
         case CPU_TYPE_ARM64:
             break;
         default:
-            fprintf(stderr, "ignore unsupported cpu type: %08x\n", header->cputype);
+            fprintf(stderr, "symredirect: skip unsupported cpu type: %08x\n", header->cputype);
             return 0;
     }
 
@@ -459,16 +461,16 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
                 break;
 
             default:
-                fprintf(stderr, "ignore unsupported file type: %08x\n", header->filetype);
+                fprintf(stderr, "symredirect: skip unsupported file type: %08x\n", header->filetype);
                 return 0;
     }
     
     if((header->flags & MH_TWOLEVEL) == 0) {
-        printf("mach-o has no MH_TWOLEVEL\n");
+        fprintf(stderr, "symredirect: mach-o has no MH_TWOLEVEL\n");
     }
 
     if((header->flags & MH_FORCE_FLAT) != 0) {
-        fprintf(stderr, "mach-o has MH_FORCE_FLAT\n");
+        fprintf(stderr, "symredirect: mach-o has MH_FORCE_FLAT\n");
         abort();
     }
 
@@ -482,6 +484,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
     struct linkedit_data_command* fixup = NULL;
     struct dyld_info_command* dyld_info = NULL;
     struct linkedit_data_command* code_sign = NULL;
+    struct build_version_command* build_version = NULL;
     
     struct load_command* lc = (struct load_command*)((uint64_t)header + sizeof(*header));
     for (int i = 0; i < header->ncmds; i++) {
@@ -558,10 +561,20 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
             case LC_CODE_SIGNATURE:
                 code_sign = (struct linkedit_data_command*)lc;
                 break;
+
+            case LC_BUILD_VERSION: {
+                build_version = (struct build_version_command*)lc;
+                break;
+            }
         }
         
         /////////
         lc = (struct load_command *) ((char *)lc + lc->cmdsize);
+    }
+
+    if(build_version && build_version->platform != PLATFORM_IOS) {
+        fprintf(stderr, "symredirect: macho is not built for iOS! skip\n");
+        return 0;
     }
     
     if(shimOrdinal == 0)
@@ -570,7 +583,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
         if(addsize%sizeof(void*)) addsize = (addsize/sizeof(void*) + 1) * sizeof(void*); //align
         if(first_sec_off < (sizeof(*header)+header->sizeofcmds+addsize))
         {
-            fprintf(stderr, "mach-o header has no enough space!\n");
+            fprintf(stderr, "symredirect: mach-o header has no enough space!\n");
             return -1;
         }
         
@@ -628,8 +641,10 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
             // ignore self-binding? But self-binding symbols should not appear in undefsym
             // if(ordinal==BIND_SPECIAL_DYLIB_SELF) continue;
             
-            if(processSymbol(header, ordinal, symstr))
+            if(processSymbol(header, ordinal, symstr)) {
+               assert(shimOrdinal <= MAX_LIBRARY_ORDINAL);
                SET_LIBRARY_ORDINAL(symbols64[i].n_desc, shimOrdinal);
+            }
         }
     }
     
@@ -646,6 +661,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
         dyld_chained_import_addend64* importsA64;
         char*                         symbolsPool     = (char*)chainsHeader + chainsHeader->symbols_offset;
         int                                 libOrdinal;
+        uint32_t maxOrdinal = chainsHeader->imports_format == DYLD_CHAINED_IMPORT_ADDEND64 ? 0xFFF0 : 0xF0;
         switch (chainsHeader->imports_format) {
             case DYLD_CHAINED_IMPORT:
                 imports = (dyld_chained_import*)((uint8_t*)chainsHeader + chainsHeader->imports_offset);
@@ -663,8 +679,10 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
                      */
                     
                     LOG("import[%d] ordinal=%x weak=%d name=%s\n", i, imports[i].lib_ordinal, imports[i].weak_import, symbolName);
-                    if(processSymbol(header, libOrdinal, symbolName))
+                    if(processSymbol(header, libOrdinal, symbolName)) {
+                        assert(shimOrdinal <= maxOrdinal);
                         imports[i].lib_ordinal = shimOrdinal;
+                    }
                 }
                 break;
             case DYLD_CHAINED_IMPORT_ADDEND:
@@ -678,8 +696,10 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
                         libOrdinal = libVal;
                     
                     LOG("importA32[%d] ordinal=%x weak=%d name=%s\n", i, importsA32[i].lib_ordinal, importsA32[i].weak_import, symbolName);
-                    if(processSymbol(header, libOrdinal, symbolName))
+                    if(processSymbol(header, libOrdinal, symbolName)) {
+                        assert(shimOrdinal <= maxOrdinal);
                         importsA32[i].lib_ordinal = shimOrdinal;
+                    }
                 }
                 break;
             case DYLD_CHAINED_IMPORT_ADDEND64:
@@ -693,12 +713,14 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
                         libOrdinal = libVal;
                     
                     LOG("importA64[%d] ordinal=%x weak=%d name=%s\n", i, importsA64[i].lib_ordinal, importsA64[i].weak_import, symbolName);
-                    if(processSymbol(header, libOrdinal, symbolName))
+                    if(processSymbol(header, libOrdinal, symbolName)) {
+                        assert(shimOrdinal <= maxOrdinal);
                         importsA64[i].lib_ordinal = shimOrdinal;
+                    }
                 }
                 break;
            default:
-                fprintf(stderr, "unknown imports format: %d\n", chainsHeader->imports_format);
+                fprintf(stderr, "symredirect: unknown imports format: %d\n", chainsHeader->imports_format);
                 return -1;
         }
     }
@@ -723,7 +745,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
             LOG("new bind=%p size=%x\n", newbind, size);
             if(newbind)
             {
-                assert(g_slice_index==0);
+                assert(slice_offset==0);
 
                 assert(lseek(fd, 0, SEEK_END)==newfsize);
                 assert(write(fd, newbind, size)==size);
@@ -754,7 +776,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
             LOG("new lazy bind=%p size=%x\n", newbind, size);
             if(newbind)
             {
-                assert(g_slice_index==0);
+                assert(slice_offset==0);
 
                 assert(lseek(fd, 0, SEEK_END)==newfsize);
                 assert(write(fd, newbind, size)==size);
@@ -770,7 +792,7 @@ int processTarget(int fd, uint64_t slice_offset, size_t slice_size, void* slice)
 
         if(newfsize != st.st_size)
         {
-            assert(g_slice_index==0);
+            assert(slice_offset==0);
 
             if(symtab)
             {
@@ -813,13 +835,13 @@ int processMachO(const char* file, int (*process)(int,uint64_t,size_t,void*))
 {
     int fd = open(file, O_RDWR);
     if(fd < 0) {
-        fprintf(stderr, "open %s error:%d,%s\n", file, errno, strerror(errno));
+        fprintf(stderr, "symredirect: open %s error:%d,%s\n", file, errno, strerror(errno));
         return -1;
     }
     
     struct stat st;
     if(stat(file, &st) < 0) {
-        fprintf(stderr, "stat %s error:%d,%s\n", file, errno, strerror(errno));
+        fprintf(stderr, "symredirect: stat %s error:%d,%s\n", file, errno, strerror(errno));
         return -1;
     }
     
@@ -832,7 +854,7 @@ int processMachO(const char* file, int (*process)(int,uint64_t,size_t,void*))
 #endif
     void* macho = mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, mapflag, fd, 0);
     if(macho == MAP_FAILED) {
-        fprintf(stderr, "map %s error:%d,%s\n", file, errno, strerror(errno));
+        fprintf(stderr, "symredirect: map %s error:%d,%s\n", file, errno, strerror(errno));
         return -1;
     }
     
@@ -844,7 +866,7 @@ int processMachO(const char* file, int (*process)(int,uint64_t,size_t,void*))
         int count = magic==FAT_MAGIC ? fathdr->nfat_arch : __builtin_bswap32(fathdr->nfat_arch);
         for(int i=0; i<count; i++) {
             uint32_t offset = magic==FAT_MAGIC ? archdr[i].offset : __builtin_bswap32(archdr[i].offset);
-            uint64_t size = magic==FAT_MAGIC ? archdr[i].size : __builtin_bswap64(archdr[i].size);
+            uint64_t size = magic==FAT_MAGIC ? archdr[i].size : __builtin_bswap32(archdr[i].size);
             if(process(fd, offset, size, (void*)((uint64_t)macho + offset)) < 0)
                return -1;
             g_slice_index++;
@@ -865,13 +887,13 @@ int processMachO(const char* file, int (*process)(int,uint64_t,size_t,void*))
             return -1;
         g_slice_index++;
     } else {
-        fprintf(stderr, "unknown magic: %08x\n", magic);
+        fprintf(stderr, "symredirect: unknown magic: %08x\n", magic);
         return -1;
     }
     
     assert(lseek(fd, 0, SEEK_SET) == 0);
     if(write(fd, macho, st.st_size) != st.st_size) {
-        fprintf(stderr, "write %lld error:%d,%s\n", st.st_size, errno, strerror(errno));
+        fprintf(stderr, "symredirect: write %lld error:%d,%s\n", st.st_size, errno, strerror(errno));
         return -1;
     }
     
